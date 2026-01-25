@@ -1,0 +1,179 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{hyperref}
+
+\title{Progress Report\\
+Event-Based Stock Price Prediction Using Financial Reports}
+\author{Petre-Laurentiu Eftimie}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Problem Setting}
+
+The objective of this thesis is to analyze how public financial disclosures influence
+short-term stock price movements. Rather than performing generic stock price prediction,
+the focus is on \textbf{event-based forecasting}, where the event is the publication of a
+financial report. The goal is to model market reaction in the days immediately following
+the disclosure, capturing phenomena such as earnings surprise and post-announcement drift.
+
+To simplify data access and ensure reproducibility, the initial experiments focus on
+companies listed on U.S. markets.
+
+\section{Data Sources}
+
+Two primary data sources are used:
+
+\begin{itemize}
+    \item \textbf{Yahoo Finance}: historical daily stock prices (Open, High, Low, Close, Volume)
+    \item \textbf{SEC EDGAR}: financial reports (Forms 10-K and 10-Q)
+\end{itemize}
+
+Both sources provide free access and Python libraries, enabling a fully automated data
+collection pipeline.
+
+\section{Event-Based Dataset Construction}
+
+Each financial filing represents a distinct event. For each event date, a fixed-size
+historical window of $d$ trading days prior to the filing is extracted from the stock
+price time series. From this window, a set of tabular features is computed. Each event
+corresponds to a single training sample.
+
+The target variable is defined as the directional price movement after the event:
+\[
+y = {I}\left(\frac{P_{t+h} - P_t}{P_t} > 0\right),
+\]
+where $h$ is the prediction horizon in days. Using relative returns avoids bias caused
+by differences in absolute stock prices.
+
+\subsection{Tabular Price-Based Features}
+
+The following features are extracted from the historical price window:
+
+\begin{itemize}
+    \item \textbf{Mean return}: captures the average price trend leading up to the filing.
+    \item \textbf{Volatility}: measures recent price uncertainty, which may influence
+    market sensitivity to new information.
+    \item \textbf{Momentum}: captures medium-term price continuation effects observed
+    in financial markets.
+    \item \textbf{Volume z-score}: reflects abnormal trading activity prior to the event,
+    potentially indicating information leakage or heightened investor attention.
+    \item \textbf{High--low range}: measures intraday price dispersion as a proxy for
+    short-term market uncertainty.
+\end{itemize}
+
+These features were chosen because they are widely used in empirical finance and provide
+a compact summary of recent market behavior without introducing forward-looking bias.
+
+\section{Time-Series Data Splitting}
+
+Classical $k$-fold cross-validation is unsuitable for time series due to temporal
+dependencies and the risk of training on future data. Two alternatives were considered:
+
+\begin{itemize}
+    \item \textbf{Expanding window}: the training set grows over time while validation
+    is performed on future samples.
+    \item \textbf{Sliding window}: a fixed-size training window moves forward in time.
+\end{itemize}
+
+An expanding window approach was selected for initial experiments and implemented using
+\texttt{TimeSeriesSplit}, ensuring temporal consistency between training and validation
+data.
+
+\section{SEC Filings Processing}
+
+SEC filings are unstructured and challenging to parse automatically. The
+\texttt{edgartools} library is used to extract individual sections using heuristic
+rules and keyword matching.
+
+Rather than using the full filing text, only sections that are most relevant for
+forward-looking analysis are retained:
+
+\begin{enumerate}
+    \item \textbf{Risk Factors (Item 1A)}: mandatory disclosures outlining the most
+    significant risks that could adversely affect the company’s future performance.
+    \item \textbf{Market Risk (Item 7A)}: quantitative and qualitative discussion of
+    exposure to interest rate, currency, and commodity risks.
+    \item \textbf{Management’s Discussion and Analysis (MD\&A, Item 7)}: management’s
+    narrative interpretation of financial results, known trends, and future uncertainties.
+\end{enumerate}
+
+These sections were selected because they contain interpretative and forward-looking
+information that is most likely to influence investor expectations and short-term
+price dynamics.
+
+\subsection{Sentiment Extraction}
+
+To transform the extracted text into numerical features, sentiment analysis is
+performed using \textbf{FinBERT}, a transformer-based language model pretrained on
+financial text. FinBERT outputs probabilities corresponding to positive, negative,
+and neutral sentiment.
+
+Sentiment scores are computed separately for each extracted section, allowing the
+model to distinguish between different types of disclosure tone (e.g., risk-related
+language versus managerial outlook). This approach preserves section-specific
+information while avoiding the noise introduced by full-document embeddings.
+
+
+\subsection{Missing Sections}
+
+Not all sections are successfully extracted from every filing. This is primarily due
+to limitations of the automated parsing heuristics, which may fail to detect sections
+even when they are present in the original document.
+
+From 607 filings across 20 manually selected S\&P 500 companies (2000--2026), the observed
+missing rates are:
+
+\begin{itemize}
+    \item Risk Factors: 35\%
+    \item MD\&A: 30\%
+    \item Market Risk: 22\%
+\end{itemize}
+
+To account for this, boolean indicator variables are added to the dataset to explicitly
+encode whether a given section is missing.
+
+\section{Current Modeling Pipeline}
+
+The current end-to-end pipeline consists of:
+
+\begin{itemize}
+    \item automated SEC filing download and section extraction
+    \item event-aligned stock price feature extraction
+    \item expanding-window train/validation/test splitting
+    \item baseline classification using logistic regression
+\end{itemize}
+
+At this stage, the emphasis is on validating the correctness and robustness of the data
+pipeline rather than optimizing predictive performance.
+
+\subsection{Preliminary Results}
+
+As an initial baseline, a logistic regression classifier was trained using the
+combined price-based features and section-level sentiment scores. Model evaluation
+was performed using an expanding-window cross-validation scheme, followed by
+evaluation on a held-out test set.
+
+The observed performance metrics are:
+
+\begin{itemize}
+    \item Cross-validation accuracy: 0.537
+    \item Cross-validation F1-score: 0.662
+    \item Test accuracy: 0.463
+    \item Test F1-score: 0.620
+\end{itemize}
+
+These results indicate limited predictive power at this stage, particularly in
+terms of directional accuracy. However, this behavior is expected for a baseline
+linear model applied to noisy financial data and a relatively small event-based
+dataset.
+
+Importantly, these results serve to validate the correctness of the data pipeline,
+event alignment, and evaluation methodology. Subsequent work will focus on improving
+performance through richer feature representations, alternative models, and more
+refined label definitions rather than treating these baseline results as a final
+outcome.
+
+\end{document}
