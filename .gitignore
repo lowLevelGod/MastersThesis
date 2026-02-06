@@ -211,3 +211,4 @@ edgar_cache/
 *.csv
 *.txt
 report/output/
+*.parquet
