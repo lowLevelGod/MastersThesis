@@ -212,3 +212,4 @@ edgar_cache/
 *.txt
 report/output/
 *.parquet
+sec_submissions/
