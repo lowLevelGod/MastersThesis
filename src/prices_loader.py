@@ -4,11 +4,11 @@ from tqdm import tqdm
 
 SEC_FILINGS_PARQUET = "parsed_sec_filings_with_tickers_and_time.parquet"
 STOOQ_FOLDER = "stooq_prices"   # <-- folder containing cdr_b.us.txt etc
-OUTPUT_PARQUET = "stooq_prices_2010_2024.parquet"
+OUTPUT_PARQUET = "stooq_prices_2010_2025.parquet"
 
 # take from 2010 to have some history before our SEC filings data starts, to be able to compute features like 200-day moving average at the start of our SEC filings data in 2011.
 START_DATE = "2010-01-01"
-END_DATE = "2024-12-31"
+END_DATE = "2025-12-31"
 
 
 def normalize_stooq_filename_ticker(ticker: str) -> str:
