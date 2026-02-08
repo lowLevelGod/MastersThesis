@@ -1,268 +1,69 @@
-class PriceFeatureExtractor:
-    def __init__(self, window=20):
-        self.window = window
+import os 
+from sec_filings_parser import SecFilingTxtParser
+from sec_filings_outlier_removal import SecFilingsOutlierRemover
+from cik_to_ticker_mapping import CikTickerMapper
+from sec_form345submission_parser import SecForm345SubmissionParser
+from prices_loader import StockPricesLoader
+from price_sec_filings_combiner import PriceSecFilingsCombiner
 
-    def extract(self, prices, event_day):
-        t = prices.index.get_loc(event_day)
-        hist = prices.iloc[t - self.window : t]
+# 1. Parse the SEC filings if not already parsed.
+if not os.path.exists("parsed_sec_filings.parquet"):
+   parser = SecFilingTxtParser(offset=8000, min_section_length=2000)
+   parser.parse_folder("./sec_filings", "parsed_sec_filings.parquet")
 
-        returns = hist["Close"].pct_change().dropna().to_numpy()
-
-        return {
-            "mean_return": returns.mean(),
-            "volatility": returns.std(),
-            "momentum": hist["Close"].pct_change(5).iloc[-1].to_numpy()[0],
-            "volume_zscore": (
-                hist["Volume"].iloc[-1].to_numpy()[0] - hist["Volume"].to_numpy().mean()
-            ) / hist["Volume"].to_numpy().std(),
-            "hl_range": (
-                hist["High"].iloc[-1].to_numpy()[0] - hist["Low"].iloc[-1].to_numpy()[0]
-            ) / hist["Close"].iloc[-1].to_numpy()[0],
-        }
+# 2. Clean the parsed data by removing outliers and rows where both MDA and Market Risk are missing.
+if not os.path.exists("parsed_sec_filings_cleaned.parquet"):
+    secFilingsOutlierRemover = SecFilingsOutlierRemover()
+    
+    secFilingsOutlierRemover.remove_outliers(
+        input_parquet = "parsed_sec_filings.parquet",
+        output_parquet = "parsed_sec_filings_cleaned.parquet",
+        percentile_cutoff = 0.99
+    )
+    
+# 3. Enhanced parsed SEC filings with associated tickers from CIKs using the 3/4/5 forms submission data from SEC.
+if not os.path.exists("parsed_sec_filings_with_tickers.parquet"):
+    
+    if not os.path.exists("cik_ticker_mapping.parquet"):
+        secForm345ubmissionParser = SecForm345SubmissionParser()
         
-class LabelGenerator:
-    def __init__(self, horizon=1):
-        self.horizon = horizon
-
-    def generate(self, prices, event_day):
-        t = prices.index.get_loc(event_day)
-        p0 = prices.iloc[t]["Close"].to_numpy()[0]
-        p1 = prices.iloc[t + self.horizon]["Close"].to_numpy()[0]
-        
-        return int((p1 - p0) / p0 > 0)
-
-class EventDatasetBuilder:
-    def __init__(self, feature_extractor, label_generator):
-        self.feature_extractor = feature_extractor
-        self.label_generator = label_generator
-
-    def build(self, prices, events):
-        rows = []
-
-        for _, e in events.iterrows():
-            event_day = e["event_day"]
-
-            try:
-                features = self.feature_extractor.extract(prices, event_day)
-                label = self.label_generator.generate(prices, event_day)
-            except Exception:
-                continue
-
-            rows.append({
-                **e.to_dict(),
-                **features,
-                "label": label
-            })
-
-        df = pd.DataFrame(rows)
-        return df.sort_values("event_day").reset_index(drop=True)
-
-from sklearn.model_selection import TimeSeriesSplit
-
-class ExpandingWindowSplitter:
-    def __init__(self, n_splits=5, test_ratio=0.2):
-        self.n_splits = n_splits
-        self.test_ratio = test_ratio
-
-    def split(self, data):
-        n = len(data)
-        test_size = int(n * self.test_ratio)
-
-        train_val = data.iloc[:-test_size]
-        test = data.iloc[-test_size:]
-
-        tscv = TimeSeriesSplit(n_splits=self.n_splits)
-
-        return train_val, test, tscv
-
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score
-
-class ModelTrainer:
-    def __init__(self):
-        self.pipeline = Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(max_iter=1000))
-        ])
-
-    def cross_validate(self, X, y, splitter):
-        accs, f1s = [], []
-
-        for train_idx, val_idx in splitter.split(X):
-            self.pipeline.fit(X.iloc[train_idx], y.iloc[train_idx])
-            preds = self.pipeline.predict(X.iloc[val_idx])
-
-            accs.append(accuracy_score(y.iloc[val_idx], preds))
-            f1s.append(f1_score(y.iloc[val_idx], preds))
-
-        return np.mean(accs), np.mean(f1s)
-
-    def fit(self, X, y):
-        self.pipeline.fit(X, y)
-
-    def evaluate(self, X, y):
-        preds = self.pipeline.predict(X)
-        return accuracy_score(y, preds), f1_score(y, preds) 
-
-import torch
-import numpy as np
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from tqdm import tqdm
-
-class FinBERTSentiment:
-    def __init__(self, model_name="ProsusAI/finbert"):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
-        self.model.eval()
-
-    def score(self, text: str):
-        if not text or text.strip() == "":
-            return {
-                "sent_pos": 0.0,
-                "sent_neg": 0.0,
-                "sent_neu": 0.0
-            }
-
-        inputs = self.tokenizer(
-            text[:4000], 
-            return_tensors="pt",
-            truncation=True,
-            max_length=512
+        secForm345ubmissionParser.parse_form345_folder(
+            folder="sec_submissions",
+            output_path="cik_ticker_mapping.parquet"
         )
 
-        with torch.no_grad():
-            logits = self.model(**inputs).logits
-            probs = torch.softmax(logits, dim=1).numpy()[0]
+    yearly_dict = secForm345ubmissionParser.build_yearly_cik_ticker_dict("cik_ticker_mapping.parquet")
 
-        return {
-            "sent_pos": float(probs[0]),
-            "sent_neg": float(probs[1]),
-            "sent_neu": float(probs[2])
-        }
+    cikTickerMapper = CikTickerMapper()
     
-import pandas as pd
-
-def enhance_sec_filings(csv_path: str) -> pd.DataFrame:
-    df = pd.read_csv(csv_path, parse_dates=["filing_date"])
-
-    finbert = FinBERTSentiment()
-
-    enhanced_rows = []
-
-    for _, row in tqdm(df.iterrows(), total=len(df)):
-        new_row = row.to_dict()
-
-        for section in ["risk_factors_text", "management_discussion_text", "market_risk_text"]:
-            text_col = f"{section}_text"
-
-            text = row.get(text_col, "")
-            missing = int(not isinstance(text, str) or text.strip() == "")
-            new_row[f"{section}_missing"] = missing
-
-            scores = finbert.score(text)
-            for k, v in scores.items():
-                new_row[f"{section}_{k}"] = v
-
-        enhanced_rows.append(new_row)
-
-    return pd.DataFrame(enhanced_rows)
-
-import yfinance as yf
-
-class PriceLoader:
-    def __init__(self, start="2000-01-01", end="2026-01-01"):
-        self.start = start
-        self.end = end
-        self.cache = {}
-
-    def get(self, ticker):
-        if ticker not in self.cache:
-            df = yf.download(ticker, start=self.start, end=self.end)
-            df.index = pd.to_datetime(df.index)
-            self.cache[ticker] = df
-        return self.cache[ticker]
-
-def build_multi_ticker_dataset(sec_df: pd.DataFrame) -> pd.DataFrame:
-    price_loader = PriceLoader()
-
-    feature_extractor = PriceFeatureExtractor(window=20)
-    label_generator = LabelGenerator(horizon=1)
-
-    builder = EventDatasetBuilder(
-        feature_extractor=feature_extractor,
-        label_generator=label_generator
+    cikTickerMapper.apply_yearly_mapping_to_sec_filings(
+        sec_filings_parquet="parsed_sec_filings_cleaned.parquet",
+        output_parquet="parsed_sec_filings_with_tickers.parquet",
+        yearly_dict=yearly_dict,
+        cik_col="cik",
+        date_col="filing_date",
+        ticker_col="ticker",
+        batch_size=50_000
+    )
+    
+# 4. Load the Stooq price data for the tickers found in the SEC filings.
+if not os.path.exists("stooq_prices_2010_2025.parquet"):
+    loader = StockPricesLoader()
+    loader.load_stock_prices(
+        sec_filings_parquet = "parsed_sec_filings_with_tickers.parquet",
+        stooq_folder = "stooq_prices",
+        # take from 2010 to have some history before our SEC filings data starts, to be able to compute features like 200-day moving average at the start of our SEC filings data in 2011.
+        start_date = "2010-01-01",
+        end_date = "2025-12-31",
+        output_parquet = "stooq_prices_2010_2025.parquet"
     )
 
-    all_rows = []
-
-    for ticker, group in sec_df.groupby("ticker"):
-        prices = price_loader.get(ticker)
-
-        if prices is None or prices.empty:
-            continue
-
-        group = group.rename(columns={"filing_date": "event_day"})
-        group = group.sort_values("event_day")
-
-        try:
-            df_ticker = builder.build(prices, group)
-            all_rows.append(df_ticker)
-        except Exception as e:
-            print(f"Skipping {ticker}: {e}")
-
-    return pd.concat(all_rows, ignore_index=True)
-
-enhanced_sec = enhance_sec_filings("sec_filings.csv")
-enhanced_sec.to_csv("sec_filings_enhanced.csv", index=False)
-
-sec_df = pd.read_csv(
-    "sec_filings_enhanced.csv",
-    parse_dates=["filing_date"]
-)
-
-final_dataset = build_multi_ticker_dataset(sec_df)
-
-final_dataset.to_csv("final_model_dataset.csv", index=False)
-
-df = pd.read_csv(
-    "final_model_dataset.csv",
-    parse_dates=["event_day"]
-).sort_values("event_day")
-
-TARGET = "label"
-
-DROP_COLS = [
-    "ticker",
-    "form_type",
-    "event_day",
-    "risk_factors_text",
-    "management_discussion_text",
-    "market_risk_text",
-    TARGET
-]
-
-X = df.drop(columns=DROP_COLS)
-y = df[TARGET]
-
-print(X.head())
-
-splitter = ExpandingWindowSplitter(n_splits=5, test_ratio=0.2)
-train_val, test, tscv = splitter.split(df)
-
-X_train_val = X.loc[train_val.index]
-y_train_val = y.loc[train_val.index]
-
-trainer = ModelTrainer()
-cv_acc, cv_f1 = trainer.cross_validate(X_train_val, y_train_val, tscv)
-
-print(f"CV Accuracy: {cv_acc:.3f}, CV F1: {cv_f1:.3f}")
-
-trainer.fit(X_train_val, y_train_val)
-
-X_test = X.loc[test.index]
-y_test = y.loc[test.index]
-
-test_acc, test_f1 = trainer.evaluate(X_test, y_test)
-print(f"Test Accuracy: {test_acc:.3f}, Test F1: {test_f1:.3f}")
+# 5. Merge SEC filings data with stock price data on ticker and date to create the final dataset.
+if not os.path.exists("sec_filings_with_price_features_and_labels.parquet"):
+    pricesSecFilingsCombiner = PriceSecFilingsCombiner()
+    
+    pricesSecFilingsCombiner.build_event_dataset(
+        prices_path = "stooq_prices_2010_2025.parquet",
+        filings_path = "parsed_sec_filings_with_tickers.parquet",
+        output_path = "sec_filings_with_price_features_and_labels.parquet"
+    )

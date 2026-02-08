@@ -1,92 +1,85 @@
 import pandas as pd
-import numpy as np
 from tqdm import tqdm
 
-INPUT_PARQUET = "parsed_sec_filings.parquet"
-OUTPUT_PARQUET = "parsed_sec_filings_cleaned.parquet"
+class SecFilingsOutlierRemover:
+    """
+    This script performs outlier removal on the parsed SEC filings dataset.
+    It drops rows where both MDA and Market Risk sections are empty, and then
+    removes extreme outliers based on text length percentiles.
+    """
+    MDA_COL = "mda_text"
+    MR_COL = "market_risk_text"
 
-MDA_COL = "mda_text"
-MR_COL = "market_risk_text"
+    def remove_outliers(self, 
+                        input_parquet: str,
+                        output_parquet: str,
+                        percentile_cutoff: float):
+        
+        print("Loading parquet...")
+        df = pd.read_parquet(input_parquet)
 
-PERCENTILE_CUTOFF = 0.99  # change to 0.99 if you want less aggressive filtering
+        print(f"Loaded rows: {len(df):,}")
+        
+        print("\nDropping rows where both MDA and Market Risk are missing...")
+        def is_empty_text(series: pd.Series) -> pd.Series:
+            """Return boolean mask where text is null or empty/whitespace."""
+            return series.isna() | (series.astype(str).str.strip() == "")
 
+        mda_empty = is_empty_text(df[self.MDA_COL])
+        mr_empty = is_empty_text(df[self.MR_COL])
 
-def is_empty_text(series: pd.Series) -> pd.Series:
-    """Return boolean mask where text is null or empty/whitespace."""
-    return series.isna() | (series.astype(str).str.strip() == "")
+        before = len(df)
+        # Drop rows where BOTH mda_text and market_risk_text are empty
+        df = df[~(mda_empty & mr_empty)].copy()
+        after = len(df)
 
+        print(f"Dropped {before - after:,} rows (both empty). Remaining: {after:,}")
 
-def main():
-    print("Loading parquet...")
-    df = pd.read_parquet(INPUT_PARQUET)
+        print(f"\nComputing {int(percentile_cutoff*100)}th percentile cutoffs...")
 
-    print(f"Loaded rows: {len(df):,}")
+        tqdm.pandas(desc="Computing MDA lengths")
+        df["mda_len"] = df[self.MDA_COL].fillna("").astype(str).progress_apply(len)
 
-    # ------------------------------------------------------------------
-    # Step 1: Drop rows where BOTH mda_text and market_risk_text are empty
-    # ------------------------------------------------------------------
-    print("\nDropping rows where both MDA and Market Risk are missing...")
+        tqdm.pandas(desc="Computing Market Risk lengths")
+        df["market_risk_len"] = df[self.MR_COL].fillna("").astype(str).progress_apply(len)
 
-    mda_empty = is_empty_text(df[MDA_COL])
-    mr_empty = is_empty_text(df[MR_COL])
+        # Remove extreme outliers by percentile cutoff 
+        mda_cutoff = df["mda_len"].quantile(percentile_cutoff)
+        mr_cutoff = df["market_risk_len"].quantile(percentile_cutoff)
 
-    before = len(df)
-    df = df[~(mda_empty & mr_empty)].copy()
-    after = len(df)
+        print(f"MDA length cutoff ({percentile_cutoff:.2f} quantile): {int(mda_cutoff):,}")
+        print(f"Market Risk length cutoff ({percentile_cutoff:.2f} quantile): {int(mr_cutoff):,}")
 
-    print(f"Dropped {before - after:,} rows (both empty). Remaining: {after:,}")
+        print("\nFiltering outliers...")
 
-    # ------------------------------------------------------------------
-    # Step 2: Remove extreme outliers by percentile cutoff (MDA first)
-    # ------------------------------------------------------------------
-    print(f"\nComputing {int(PERCENTILE_CUTOFF*100)}th percentile cutoffs...")
+        before = len(df)
 
-    tqdm.pandas(desc="Computing MDA lengths")
-    df["mda_len"] = df[MDA_COL].fillna("").astype(str).progress_apply(len)
+        df = df[(df["mda_len"] <= mda_cutoff) | (df["mda_len"] == 0)]
 
-    tqdm.pandas(desc="Computing Market Risk lengths")
-    df["market_risk_len"] = df[MR_COL].fillna("").astype(str).progress_apply(len)
+        mid = len(df)
+        print(f"After MDA outlier removal: {mid:,} rows remaining")
 
-    mda_cutoff = df["mda_len"].quantile(PERCENTILE_CUTOFF)
-    mr_cutoff = df["market_risk_len"].quantile(PERCENTILE_CUTOFF)
+        df = df[(df["market_risk_len"] <= mr_cutoff) | (df["market_risk_len"] == 0)]
 
-    print(f"MDA length cutoff ({PERCENTILE_CUTOFF:.2f} quantile): {int(mda_cutoff):,}")
-    print(f"Market Risk length cutoff ({PERCENTILE_CUTOFF:.2f} quantile): {int(mr_cutoff):,}")
+        after = len(df)
+        print(f"After Market Risk outlier removal: {after:,} rows remaining")
+        print(f"Total removed by outlier filtering: {before - after:,}")
 
-    # ------------------------------------------------------------------
-    # Apply filtering
-    # ------------------------------------------------------------------
-    print("\nFiltering outliers...")
+        # Drop helper columns
+        df = df.drop(columns=["mda_len", "market_risk_len"], errors="ignore")
 
-    before = len(df)
+        print(f"\nSaving cleaned parquet to: {output_parquet}")
+        df.to_parquet(output_parquet, index=False)
 
-    # Filter MDA outliers (but keep empty ones)
-    df = df[(df["mda_len"] <= mda_cutoff) | (df["mda_len"] == 0)]
-
-    mid = len(df)
-    print(f"After MDA outlier removal: {mid:,} rows remaining")
-
-    # Filter Market Risk outliers (but keep empty ones)
-    df = df[(df["market_risk_len"] <= mr_cutoff) | (df["market_risk_len"] == 0)]
-
-    after = len(df)
-    print(f"After Market Risk outlier removal: {after:,} rows remaining")
-    print(f"Total removed by outlier filtering: {before - after:,}")
-
-    # ------------------------------------------------------------------
-    # Drop helper columns
-    # ------------------------------------------------------------------
-    df = df.drop(columns=["mda_len", "market_risk_len"], errors="ignore")
-
-    # ------------------------------------------------------------------
-    # Save cleaned parquet
-    # ------------------------------------------------------------------
-    print(f"\nSaving cleaned parquet to: {OUTPUT_PARQUET}")
-    df.to_parquet(OUTPUT_PARQUET, index=False)
-
-    print("Done.")
-    print(f"Final dataset size: {len(df):,}")
+        print("Done.")
+        print(f"Final dataset size: {len(df):,}")
 
 
 if __name__ == "__main__":
-    main()
+    secFilingsOutlierRemover = SecFilingsOutlierRemover()
+    
+    secFilingsOutlierRemover.remove_outliers(
+        input_parquet = "parsed_sec_filings.parquet",
+        output_parquet = "parsed_sec_filings_cleaned.parquet",
+        percentile_cutoff = 0.99
+    )
