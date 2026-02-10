@@ -62,7 +62,7 @@ if not os.path.exists("stooq_prices_2010_2025.parquet"):
 if not os.path.exists("sec_filings_with_price_features_and_labels.parquet"):
     pricesSecFilingsCombiner = PriceSecFilingsCombiner()
     
-    pricesSecFilingsCombiner.build_event_dataset(
+    pricesSecFilingsCombiner.build_dataset(
         prices_path = "stooq_prices_2010_2025.parquet",
         filings_path = "parsed_sec_filings_with_tickers.parquet",
         output_path = "sec_filings_with_price_features_and_labels.parquet"

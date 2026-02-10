@@ -213,3 +213,4 @@ edgar_cache/
 report/output/
 *.parquet
 sec_submissions/
+finbert_chunk_cache/
