@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-PARQUET_PATH = "sec_filings_with_price_features_and_labels.parquet"
+PARQUET_PATH = "us_market_dataset.parquet"
 N_SAMPLES = 10
 
 df = pd.read_parquet(PARQUET_PATH)

@@ -1,209 +1,318 @@
-from sklearn.model_selection import TimeSeriesSplit
+import pandas as pd
+import numpy as np
 
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.linear_model import LogisticRegression, Ridge
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+
+from sklearn.metrics import (
+    accuracy_score, f1_score,
+    mean_absolute_error, mean_squared_error, r2_score
+)
+
+from tabulate import tabulate
+
+# XGBoost
+from xgboost import XGBClassifier, XGBRegressor
+
+
+# -----------------------------
+# Expanding window split
+# -----------------------------
 class ExpandingWindowSplitter:
     def __init__(self, n_splits=5, test_ratio=0.2):
         self.n_splits = n_splits
         self.test_ratio = test_ratio
 
-    def split(self, data):
-        n = len(data)
+    def split(self, df, date_col):
+        df = df.sort_values(date_col).reset_index(drop=True)
+
+        n = len(df)
         test_size = int(n * self.test_ratio)
 
-        train_val = data.iloc[:-test_size]
-        test = data.iloc[-test_size:]
+        train_val = df.iloc[:-test_size]
+        test = df.iloc[-test_size:]
 
         tscv = TimeSeriesSplit(n_splits=self.n_splits)
 
         return train_val, test, tscv
 
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score
 
+# -----------------------------
+# Generic trainer
+# -----------------------------
 class ModelTrainer:
-    def __init__(self):
-        self.pipeline = Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(max_iter=1000))
-        ])
+    def __init__(self, model, task="classification", scale=False):
+        self.task = task
+        self.scale = scale
+
+        if scale:
+            self.pipeline = Pipeline([
+                ("scaler", StandardScaler()),
+                ("model", model)
+            ])
+        else:
+            self.pipeline = Pipeline([
+                ("model", model)
+            ])
 
     def cross_validate(self, X, y, splitter):
-        accs, f1s = [], []
+        scores = []
 
         for train_idx, val_idx in splitter.split(X):
-            self.pipeline.fit(X.iloc[train_idx], y.iloc[train_idx])
-            preds = self.pipeline.predict(X.iloc[val_idx])
+            X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
+            y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
 
-            accs.append(accuracy_score(y.iloc[val_idx], preds))
-            f1s.append(f1_score(y.iloc[val_idx], preds))
+            self.pipeline.fit(X_train, y_train)
+            preds = self.pipeline.predict(X_val)
 
-        return np.mean(accs), np.mean(f1s)
+            if self.task == "classification":
+                acc = accuracy_score(y_val, preds)
+                f1 = f1_score(y_val, preds, average="macro")
+                scores.append((acc, f1))
+            else:
+                mae = mean_absolute_error(y_val, preds)
+                rmse = np.sqrt(mean_squared_error(y_val, preds))
+                r2 = r2_score(y_val, preds)
+                scores.append((mae, rmse, r2))
+
+        return np.mean(scores, axis=0)
 
     def fit(self, X, y):
         self.pipeline.fit(X, y)
 
     def evaluate(self, X, y):
         preds = self.pipeline.predict(X)
-        return accuracy_score(y, preds), f1_score(y, preds) 
 
-import torch
-import numpy as np
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from tqdm import tqdm
+        if self.task == "classification":
+            acc = accuracy_score(y, preds)
+            f1 = f1_score(y, preds, average="macro")
+            return acc, f1
+        else:
+            mae = mean_absolute_error(y, preds)
+            rmse = np.sqrt(mean_squared_error(y, preds))
+            r2 = r2_score(y, preds)
+            return mae, rmse, r2
 
-class FinBERTSentiment:
-    def __init__(self, model_name="ProsusAI/finbert"):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
-        self.model.eval()
 
-    def score(self, text: str):
-        if not text or text.strip() == "":
-            return {
-                "sent_pos": 0.0,
-                "sent_neg": 0.0,
-                "sent_neu": 0.0
-            }
+# -----------------------------
+# Load dataset
+# -----------------------------
+df = pd.read_parquet("us_market_dataset.parquet")
 
-        inputs = self.tokenizer(
-            text[:4000], 
-            return_tensors="pt",
-            truncation=True,
-            max_length=512
-        )
+DATE_COL = "filing_date"
+df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce")
+df = df.dropna(subset=[DATE_COL]).sort_values(DATE_COL).reset_index(drop=True)
 
-        with torch.no_grad():
-            logits = self.model(**inputs).logits
-            probs = torch.softmax(logits, dim=1).numpy()[0]
+print("Dataset shape:", df.shape)
 
-        return {
-            "sent_pos": float(probs[0]),
-            "sent_neg": float(probs[1]),
-            "sent_neu": float(probs[2])
-        }
-    
-import pandas as pd
 
-def enhance_sec_filings(csv_path: str) -> pd.DataFrame:
-    df = pd.read_csv(csv_path, parse_dates=["filing_date"])
-
-    finbert = FinBERTSentiment()
-
-    enhanced_rows = []
-
-    for _, row in tqdm(df.iterrows(), total=len(df)):
-        new_row = row.to_dict()
-
-        for section in ["risk_factors_text", "management_discussion_text", "market_risk_text"]:
-            text_col = f"{section}_text"
-
-            text = row.get(text_col, "")
-            missing = int(not isinstance(text, str) or text.strip() == "")
-            new_row[f"{section}_missing"] = missing
-
-            scores = finbert.score(text)
-            for k, v in scores.items():
-                new_row[f"{section}_{k}"] = v
-
-        enhanced_rows.append(new_row)
-
-    return pd.DataFrame(enhanced_rows)
-
-import yfinance as yf
-
-class PriceLoader:
-    def __init__(self, start="2000-01-01", end="2026-01-01"):
-        self.start = start
-        self.end = end
-        self.cache = {}
-
-    def get(self, ticker):
-        if ticker not in self.cache:
-            df = yf.download(ticker, start=self.start, end=self.end)
-            df.index = pd.to_datetime(df.index)
-            self.cache[ticker] = df
-        return self.cache[ticker]
-
-def build_multi_ticker_dataset(sec_df: pd.DataFrame) -> pd.DataFrame:
-    price_loader = PriceLoader()
-
-    feature_extractor = PriceFeatureExtractor(window=20)
-    label_generator = LabelGenerator(horizon=1)
-
-    builder = EventDatasetBuilder(
-        feature_extractor=feature_extractor,
-        label_generator=label_generator
-    )
-
-    all_rows = []
-
-    for ticker, group in sec_df.groupby("ticker"):
-        prices = price_loader.get(ticker)
-
-        if prices is None or prices.empty:
-            continue
-
-        group = group.rename(columns={"filing_date": "event_day"})
-        group = group.sort_values("event_day")
-
-        try:
-            df_ticker = builder.build(prices, group)
-            all_rows.append(df_ticker)
-        except Exception as e:
-            print(f"Skipping {ticker}: {e}")
-
-    return pd.concat(all_rows, ignore_index=True)
-
-enhanced_sec = enhance_sec_filings("sec_filings.csv")
-enhanced_sec.to_csv("sec_filings_enhanced.csv", index=False)
-
-sec_df = pd.read_csv(
-    "sec_filings_enhanced.csv",
-    parse_dates=["filing_date"]
-)
-
-final_dataset = build_multi_ticker_dataset(sec_df)
-
-final_dataset.to_csv("final_model_dataset.csv", index=False)
-
-df = pd.read_csv(
-    "final_model_dataset.csv",
-    parse_dates=["event_day"]
-).sort_values("event_day")
-
-TARGET = "label"
-
-DROP_COLS = [
-    "ticker",
+# -----------------------------
+# Define columns
+# -----------------------------
+NON_FEATURE_COLS = [
+    "filing_date",
     "form_type",
+    "cik",
+    "accession",
+    "ticker",
+    "acceptance_time",
     "event_day",
-    "risk_factors_text",
-    "management_discussion_text",
-    "market_risk_text",
-    TARGET
+    "event_base_price",
+    "event_next_price",
+    "event_return",
+    "event_day_used",
+    "event_label"
 ]
 
-X = df.drop(columns=DROP_COLS)
-y = df[TARGET]
+SENTIMENT_COLS = [
+    "finbert_neg",
+    "finbert_neu",
+    "finbert_pos",
+    "finbert_neg_std",
+    "finbert_neu_std",
+    "finbert_pos_std",
+    "finbert_polarity_std"
+]
 
-print(X.head())
+CLASSIFICATION_LABEL_COLS = [f"label_{day}d" for day in range(1, 8)]
+REGRESSION_LABEL_COLS = [f"return_{day}d" for day in range(1, 8)]
 
+ALL_DROP_COLS = NON_FEATURE_COLS + CLASSIFICATION_LABEL_COLS + REGRESSION_LABEL_COLS
+
+
+# -----------------------------
+# Feature builder
+# -----------------------------
+def build_feature_matrix(df, drop_sentiment=False):
+    X = df.drop(columns=ALL_DROP_COLS, errors="ignore")
+
+    if drop_sentiment:
+        X = X.drop(columns=SENTIMENT_COLS, errors="ignore")
+
+    X = X.select_dtypes(include=[np.number]).fillna(0.0)
+
+    return X
+
+
+X_with_sentiment = build_feature_matrix(df, drop_sentiment=False)
+X_without_sentiment = build_feature_matrix(df, drop_sentiment=True)
+
+print("Features WITH sentiment:", X_with_sentiment.shape)
+print("Features WITHOUT sentiment:", X_without_sentiment.shape)
+
+
+# -----------------------------
+# Split dataset
+# -----------------------------
 splitter = ExpandingWindowSplitter(n_splits=5, test_ratio=0.2)
-train_val, test, tscv = splitter.split(df)
+train_val_df, test_df, tscv = splitter.split(df, DATE_COL)
 
-X_train_val = X.loc[train_val.index]
-y_train_val = y.loc[train_val.index]
+X_train_val_with = X_with_sentiment.loc[train_val_df.index]
+X_test_with = X_with_sentiment.loc[test_df.index]
 
-trainer = ModelTrainer()
-cv_acc, cv_f1 = trainer.cross_validate(X_train_val, y_train_val, tscv)
+X_train_val_wo = X_without_sentiment.loc[train_val_df.index]
+X_test_wo = X_without_sentiment.loc[test_df.index]
 
-print(f"CV Accuracy: {cv_acc:.3f}, CV F1: {cv_f1:.3f}")
 
-trainer.fit(X_train_val, y_train_val)
+# ============================================================
+# MODELS
+# ============================================================
+classification_models = {
+    "LogReg": (LogisticRegression(max_iter=3000), True),
+    "RandomForest": (RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1), False),
+    "XGBoost": (
+        XGBClassifier(
+            n_estimators=400,
+            max_depth=6,
+            learning_rate=0.05,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            objective="multi:softmax",
+            num_class=3,
+            eval_metric="mlogloss",
+            random_state=42,
+            n_jobs=-1
+        ),
+        False
+    )
+}
 
-X_test = X.loc[test.index]
-y_test = y.loc[test.index]
+regression_models = {
+    "Ridge": (Ridge(alpha=1.0), True),
+    "RandomForest": (RandomForestRegressor(n_estimators=300, random_state=42, n_jobs=-1), False),
+    "XGBoost": (
+        XGBRegressor(
+            n_estimators=600,
+            max_depth=6,
+            learning_rate=0.05,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            objective="reg:squarederror",
+            random_state=42,
+            n_jobs=-1
+        ),
+        False
+    )
+}
 
-test_acc, test_f1 = trainer.evaluate(X_test, y_test)
-print(f"Test Accuracy: {test_acc:.3f}, Test F1: {test_f1:.3f}")
+
+# ============================================================
+# CLASSIFICATION RESULTS
+# ============================================================
+print("\n================ MULTICLASS CLASSIFICATION RESULTS ================\n")
+
+for day in range(1, 8):
+    label_col = f"label_{day}d"
+    if label_col not in df.columns:
+        continue
+
+    y_train_val = df.loc[train_val_df.index, label_col].astype(int)
+    y_test = df.loc[test_df.index, label_col].astype(int)
+
+    rows = []
+
+    for model_name, (model, use_scaler) in classification_models.items():
+        # WITH sentiment
+        trainer_with = ModelTrainer(model=model, task="classification", scale=use_scaler)
+        cv_acc_w, cv_f1_w = trainer_with.cross_validate(X_train_val_with, y_train_val, tscv)
+        trainer_with.fit(X_train_val_with, y_train_val)
+        test_acc_w, test_f1_w = trainer_with.evaluate(X_test_with, y_test)
+
+        # WITHOUT sentiment
+        trainer_wo = ModelTrainer(model=model, task="classification", scale=use_scaler)
+        cv_acc_wo, cv_f1_wo = trainer_wo.cross_validate(X_train_val_wo, y_train_val, tscv)
+        trainer_wo.fit(X_train_val_wo, y_train_val)
+        test_acc_wo, test_f1_wo = trainer_wo.evaluate(X_test_wo, y_test)
+
+        rows.append([
+            model_name,
+            f"{cv_acc_w:.4f}", f"{cv_f1_w:.4f}",
+            f"{test_acc_w:.4f}", f"{test_f1_w:.4f}",
+            f"{test_acc_wo:.4f}", f"{test_f1_wo:.4f}",
+            f"{(test_f1_w - test_f1_wo):+.4f}"
+        ])
+
+    print(f"\n--- Horizon {day} Day(s) ---\n")
+    print(tabulate(
+        rows,
+        headers=[
+            "Model",
+            "CV Acc (Sent)", "CV F1 (Sent)",
+            "Test Acc (Sent)", "Test F1 (Sent)",
+            "Test Acc (NoSent)", "Test F1 (NoSent)",
+            "Δ Test F1"
+        ],
+        tablefmt="github"
+    ))
+
+
+# ============================================================
+# REGRESSION RESULTS
+# ============================================================
+print("\n================ REGRESSION RESULTS ================\n")
+
+for day in range(1, 8):
+    target_col = f"return_{day}d"
+    if target_col not in df.columns:
+        continue
+
+    y_train_val = df.loc[train_val_df.index, target_col].astype(float)
+    y_test = df.loc[test_df.index, target_col].astype(float)
+
+    rows = []
+
+    for model_name, (model, use_scaler) in regression_models.items():
+        # WITH sentiment
+        trainer_with = ModelTrainer(model=model, task="regression", scale=use_scaler)
+        cv_mae_w, cv_rmse_w, cv_r2_w = trainer_with.cross_validate(X_train_val_with, y_train_val, tscv)
+        trainer_with.fit(X_train_val_with, y_train_val)
+        test_mae_w, test_rmse_w, test_r2_w = trainer_with.evaluate(X_test_with, y_test)
+
+        # WITHOUT sentiment
+        trainer_wo = ModelTrainer(model=model, task="regression", scale=use_scaler)
+        cv_mae_wo, cv_rmse_wo, cv_r2_wo = trainer_wo.cross_validate(X_train_val_wo, y_train_val, tscv)
+        trainer_wo.fit(X_train_val_wo, y_train_val)
+        test_mae_wo, test_rmse_wo, test_r2_wo = trainer_wo.evaluate(X_test_wo, y_test)
+
+        rows.append([
+            model_name,
+            f"{test_mae_w:.6f}", f"{test_rmse_w:.6f}", f"{test_r2_w:.4f}",
+            f"{test_mae_wo:.6f}", f"{test_rmse_wo:.6f}", f"{test_r2_wo:.4f}",
+            f"{(test_rmse_w - test_rmse_wo):+.6f}"
+        ])
+
+    print(f"\n--- Horizon {day} Day(s) ---\n")
+    print(tabulate(
+        rows,
+        headers=[
+            "Model",
+            "Test MAE (Sent)", "Test RMSE (Sent)", "Test R2 (Sent)",
+            "Test MAE (NoSent)", "Test RMSE (NoSent)", "Test R2 (NoSent)",
+            "Δ Test RMSE"
+        ],
+        tablefmt="github"
+    ))
