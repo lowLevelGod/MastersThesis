@@ -266,7 +266,7 @@ class SecFilingTxtParser:
 
             return section_text.strip()
 
-        def remove_noisy_lines(text: str, min_chars: int = 50) -> str:
+        def remove_noisy_lines(text: str, min_chars: int = 30) -> str:
             """
             Remove short lines from extracted section text and lines that are mostly numeric or separators (common in tables).
             """

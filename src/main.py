@@ -5,6 +5,7 @@ from cik_to_ticker_mapping import CikTickerMapper
 from sec_form345submission_parser import SecForm345SubmissionParser
 from prices_loader import StockPricesLoader
 from price_sec_filings_combiner import PriceSecFilingsCombiner
+from finbert_sentiment_enhancer import FinBertSentimentEnhancer
 
 # 1. Parse the SEC filings if not already parsed.
 if not os.path.exists("parsed_sec_filings.parquet"):
@@ -66,4 +67,22 @@ if not os.path.exists("sec_filings_with_price_features_and_labels.parquet"):
         prices_path = "stooq_prices_2010_2025.parquet",
         filings_path = "parsed_sec_filings_with_tickers.parquet",
         output_path = "sec_filings_with_price_features_and_labels.parquet"
+    )
+
+# 6. Extract sentiment scores using FinBert from the text columns to create a complete numeric dataset.
+if not os.path.exists("us_market_dataset.parquet"):    
+    enhancer = FinBertSentimentEnhancer(
+        chunk_size=384,
+        stride=64,
+        max_chunks=48,
+        batch_size=512,         # GPU batch size
+        doc_batch_size=512,     # docs per outer batch
+        save_every=100000,
+        cache_dir="finbert_cache",
+        use_chunk_cache=False 
+    )
+
+    enhancer.add_sentiment_scores(
+        input_path="sec_filings_with_price_features_and_labels.parquet",
+        output_path="us_market_dataset.parquet"
     )
