@@ -56,11 +56,12 @@ print(df_merged.columns)
 # -------------------------------
 # Save to new Parquet
 # -------------------------------
-df_merged.to_parquet("us_market_dataset_with_sector.parquet", index=False)
-print(df_merged.shape)
 df_merged = df_merged.dropna(subset=['sector'])
+df_merged = df_merged.dropna(subset=['industry'])
 print(df_merged.shape)
 print("Saved new dataset with Sector and Industry!")
+df_merged.to_parquet("us_market_dataset_with_sector.parquet", index=False)
+print(df_merged.shape)
 
 import matplotlib.pyplot as plt
 import seaborn as sns

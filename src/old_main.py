@@ -174,7 +174,6 @@ class LogisticRegressionGridSearch(BaseGridSearch):
             C=params["C"],
             solver=params["solver"],
             max_iter=params["max_iter"],
-            multi_class="multinomial"
         )
 
 
