@@ -1,0 +1,161 @@
+\chapter{Dataset}
+
+This study focuses exclusively on firms listed in United States equity markets. 
+The U.S. market was selected for three principal reasons. 
+First, it is the largest and most liquid equity market globally, providing a rich cross-section of firms across sectors and industries. 
+Second, U.S. disclosure requirements are among the most stringent and standardized worldwide, ensuring high-quality, comparable corporate reporting. 
+Third, the availability of structured financial, textual, and market data is substantially greater than in most international markets, making it particularly well-suited for large-scale empirical and machine learning research.
+
+\section{SEC Filings and the Choice of 10-K and 10-Q Reports}
+
+Corporate disclosure in the United States is regulated by the U.S. Securities and Exchange Commission (SEC), which requires publicly traded firms to submit periodic filings through the Electronic Data Gathering, Analysis, and Retrieval (EDGAR) system. 
+These filings serve as primary sources of information for investors, analysts, and regulators.
+
+Among the wide range of SEC forms, this study focuses exclusively on Form 10-K and Form 10-Q. 
+The 10-K is the firm's annual report, providing a comprehensive overview of financial performance, business operations, risk factors, and management analysis for the fiscal year. 
+The 10-Q is the corresponding quarterly report, offering interim updates on financial condition and results of operations.
+Together, these two forms represent the most detailed and standardized recurring disclosures made by U.S. public companies.
+
+The choice to restrict attention to 10-K and 10-Q filings is motivated by their informational richness and regulatory consistency. 
+Unlike event-driven filings (e.g., 8-K) that may be triggered by heterogeneous corporate events, 10-K and 10-Q reports are mandatory, regularly scheduled disclosures that follow standardized content requirements. 
+Prior research demonstrates that these filings contain economically meaningful information relevant to valuation and risk assessment\cite{textual-analysis-dictionaries-and-10ks}. 
+Focusing on these forms ensures comparability across firms and time, while concentrating on disclosures that are central to investors' expectations formation.
+
+The textual data were obtained from the University of Notre Dame's cleaned SEC filings dataset (\href{https://sraf.nd.edu/sec-edgar-data/}{https://sraf.nd.edu/sec-edgar-data/}), which removes HTML tags, tables, and formatting artifacts from raw EDGAR documents. 
+This preprocessing is particularly important for natural language processing applications, as raw filings often contain extensive markup and tabular structures that are not directly usable in textual modeling.
+
+The sample period spans 2011 to 2024. 
+The starting point was selected to reflect modern market conditions and reporting practices. 
+Following regulatory changes such as the adoption of XBRL (eXtensible Business Reporting Language) requirements in the late 2000s and early 2010s, SEC filings became more standardized and machine-readable. 
+The SEC mandated phased XBRL adoption beginning in 2009, with full compliance across firms in the early 2010s, substantially increasing structural consistency in filings. 
+Restricting the sample to 2011 onward therefore improves comparability and alignment with contemporary disclosure formats. 
+Additionally, older financial data may reflect structural market conditions, such as lower algorithmic trading penetration and different regulatory environments, that are less representative of today's market microstructure.
+
+\section{Section Extraction and Text Processing}
+
+Although 10-K and 10-Q filings are information-rich, they are also lengthy and heterogeneous.
+Not all sections are equally relevant for short-term stock price prediction. 
+Therefore, rather than using the entire filing, this study focuses on two specific sections: 
+Management's Discussion and Analysis of Financial Condition and Results of Operations (MD\&A) and Quantitative and Qualitative Disclosures About Market Risk.
+
+The MD\&A section provides management's narrative explanation of financial performance, liquidity, capital resources, and operational trends. 
+It frequently includes forward-looking statements, explanations of earnings changes, and contextual discussion that goes beyond raw financial statements. 
+Prior literature highlights the importance of textual tone and narrative disclosures in influencing investor reactions.
+
+The “Quantitative and Qualitative Disclosures About Market Risk” section addresses exposures to interest rate risk, currency risk, commodity price risk, and other financial uncertainties. 
+These disclosures are directly relevant to risk assessment and may influence investors' expectations about future volatility and firm performance.
+
+Section extraction was performed using regular expression matching to isolate these components from each filing. 
+Because automated extraction may occasionally fail or capture unintended content, additional filtering steps were applied. 
+Very short lines and lines without alphabetic characters were removed, as these often correspond to residual table fragments or formatting artifacts rather than meaningful narrative text. 
+Samples with total character counts exceeding the 99th percentile were excluded, as these typically reflected extraction errors. 
+Filings with fewer than two lines of extracted text, or with both targeted sections empty, were also removed to ensure substantive textual content.
+
+These preprocessing decisions aim to balance textual richness with data quality, ensuring that the resulting corpus is both economically meaningful and suitable for NLP-based modeling.
+
+\section{Firm Identifier Mapping: CIK to Ticker}
+
+The cleaned SEC dataset contains firm identifiers in the form of Central Index Key (CIK) codes assigned by the SEC. 
+However, stock price databases typically use ticker symbols. 
+To align filings with market data, it was necessary to construct a mapping from CIK to ticker.
+
+This mapping was created by combining two sources. 
+First, the SEC's Insider Transactions Data Sets (Forms 3, 4, and 5) were used, as these filings often include both CIK and ticker information. 
+These historical submissions provide time-varying mappings that are particularly useful for capturing changes in ticker symbols over time. 
+Second, the SEC's publicly available ticker-to-CIK mapping file (ticker.txt) was used to supplement recent mappings. 
+Because the latter primarily reflects current ticker assignments and may not accurately represent historical changes, combining both sources improves coverage and historical accuracy.
+
+\section{Stock Price Data and Feature Construction}
+
+Stock price data were obtained from Stooq (\href{https://stooq.com/db/h/}{https://stooq.com/db/h/}), which provides historical daily price data for companies listed on the NYSE and NASDAQ. 
+The dataset includes daily open, high, low, close, and volume information.
+
+To align financial reports with market data, each filing was treated as an event date. 
+Rather than relying solely on price information from a single day, rolling windows of preceding trading days (e.g., 5, 10, 20 days) were used to compute summary statistics such as moving averages, momentum indicators, and realized volatility measures. 
+This approach compresses multiple daily observations into a single feature vector associated with each filing event. 
+By incorporating recent market dynamics prior to disclosure, the dataset captures prevailing trends and risk conditions that may interact with the informational content of the filing.
+
+\section{Sector and Industry Classification}
+
+To enrich the dataset with structural firm characteristics, sector and industry classifications were incorporated using data from the \href{https://www.nasdaq.com/market-activity/stocks/screener}{NASDAQ Stock Screener}, which provides mappings from ticker symbols to sector and industry categories. 
+Including sector and industry identifiers enables cross-sectional analysis of heterogeneous effects across economic segments and allows for later examination of sector-adjusted or industry-adjusted return behavior.
+
+\section{Text Processing and Sentiment Extraction}
+
+Following section extraction and cleaning, the textual data consisted of the concatenated MD\&A and Quantitative and Qualitative Disclosures About Market Risk sections for each filing. 
+In practice, the market risk section was missing in a substantial portion of the 10-Q filings and in some 10-K filings, as disclosure requirements may vary depending on firm characteristics and reporting thresholds. 
+To maintain consistency across observations and avoid discarding otherwise informative samples, the extracted sections were concatenated into a single document per filing and processed jointly. 
+This approach ensures that all available narrative information is utilized while preserving comparability across firms and time.
+
+Because the objective of the study is to examine the short-term stock price impact of financial reports, particular emphasis was placed on capturing the sentiment embedded in managerial guidance and forward-looking statements. 
+Prior literature suggests that tone and linguistic framing in corporate disclosures influence investor perception and subsequent returns. 
+Consequently, sentiment was treated as a central textual feature.
+
+\subsection{BERT and FinBERT}
+
+To extract sentiment from the textual disclosures, this study employs FinBERT\cite{yang2020finbertpretrainedlanguagemodel}, a domain-adapted transformer-based language model derived from BERT.
+
+BERT (Bidirectional Encoder Representations from Transformers), introduced by Jacob Devlin et al. (2019)\cite{devlin2019bertpretrainingdeepbidirectional}, is based on the transformer architecture proposed by Ashish Vaswani et al. (2017)\cite{vaswani2023attentionneed}. 
+Unlike earlier sequential language models, BERT uses bidirectional self-attention mechanisms, allowing it to condition each word on both its left and right context simultaneously. 
+This architecture enables deep contextual understanding of language and has become foundational in modern natural language processing.
+
+However, general-purpose BERT models are trained on corpora such as Wikipedia and BooksCorpus, which do not reflect the specialized vocabulary and linguistic conventions of financial reporting. 
+Financial text exhibits domain-specific terminology, formal structure, and nuanced expressions of uncertainty and risk that differ substantially from general language usage.
+
+To address this limitation, FinBERT was developed as a version of BERT fine-tuned on financial corpora, including SEC filings and financial news. 
+FinBERT is specifically optimized for financial sentiment classification, distinguishing between positive, negative, and neutral tone in financial contexts. 
+Its training on SEC filings makes it particularly well-suited for analyzing MD\&A and related disclosure sections, as it captures the semantics and tone patterns characteristic of regulatory financial reporting.
+
+Importantly, only the textual narrative sections extracted from the filings were used as input to FinBERT. 
+Residual numerical fragments, table artifacts, and non-linguistic content were removed during preprocessing, ensuring that sentiment scores reflect meaningful narrative disclosures rather than structural noise.
+
+\subsection{Handling the 512-Token Limitation}
+
+A key architectural constraint of BERT-based models is the maximum input length of 512 tokens. 
+This limitation arises because the self-attention mechanism scales quadratically with sequence length in both memory and computation. 
+To maintain tractability during pretraining and inference, BERT was designed with a fixed maximum positional embedding size of 512 tokens. 
+Sequences exceeding this limit must therefore be truncated or segmented.
+
+The extracted MD\&A and market risk sections frequently exceeded this limit by a substantial margin, often containing tens of thousands of tokens. 
+Truncating the text to the first 512 tokens would discard potentially informative content, particularly forward-looking statements that may appear later in the section. 
+Therefore, a strategy was required to approximate document-level sentiment while respecting the architectural constraint.
+
+To address this issue, each document was divided into candidate chunks, from which a fixed number of segments were randomly sampled. 
+Specifically, 48 chunks were sampled per document. 
+This number was chosen based on the average character length of the filings in the dataset and computational considerations. 
+It provides broad coverage of the document's content while maintaining feasible inference time given the scale of the dataset.
+
+Each chunk was limited to 384 tokens. 
+This length was selected to ensure that, after accounting for special tokens (e.g., [CLS], [SEP]) and potential padding required for batch processing, the total sequence length would not exceed the 512-token maximum. 
+Using 384 tokens strikes a balance between contextual richness and computational safety, minimizing the risk of truncation while preserving meaningful semantic structure within each chunk.
+
+Random sampling, rather than fixed sequential splitting, was adopted to avoid systematic bias toward specific portions of the document (e.g., only introductory or concluding paragraphs). 
+Higher weight was given to chunks in the middle of the document, since the beginning and the end of the sections often contained boilerplate language or summary statements 
+that may be less informative for sentiment analysis.
+Over 48 sampled chunks, the method provides a distributed approximation of the document's overall tone.
+
+\subsection{Aggregation of Sentiment Scores}
+
+FinBERT produces, for each chunk, probability scores for three sentiment categories: positive, negative, and neutral. 
+To obtain document-level features representing the entire filing, these chunk-level outputs were aggregated.
+
+For each filing, the following features were computed:
+\begin{itemize}
+    \item The mean positive, negative, and neutral scores across the 48 chunks.
+	\item The standard deviation of the positive, negative, and neutral scores across chunks.
+    \item The standard deviation of the polarity score, defined as the difference between positive and negative probabilities.
+\end{itemize}
+
+The mean sentiment scores provide an estimate of the overall tone of the disclosure, capturing whether the document is predominantly optimistic, pessimistic, or neutral in its language. 
+This aligns directly with the study's objective of assessing how managerial tone influences short-term market reactions.
+
+The standard deviations capture intra-document variability in tone. 
+Financial reports may contain mixed signals—for example, strong performance in one segment and risk warnings in another. 
+A high standard deviation in sentiment scores indicates heterogeneous tone across sections, which may reflect uncertainty, complexity, or conflicting information. 
+Such variation may influence how investors interpret and price the disclosure.
+
+Finally, the standard deviation of the polarity measure captures fluctuations in the balance between positive and negative language across the document. 
+This feature reflects the stability or volatility of expressed sentiment and may proxy for narrative inconsistency or nuanced communication strategies.
+
+Together, these aggregated measures transform long-form financial disclosures into compact, economically interpretable sentiment features. 
+By combining domain-adapted language modeling with document-level aggregation, this approach preserves both contextual depth and cross-sectional comparability, providing structured inputs suitable for empirical analysis of short-term stock price reactions.

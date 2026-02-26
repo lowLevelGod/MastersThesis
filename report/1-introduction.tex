@@ -1,0 +1,71 @@
+\chapter{Introduction}
+
+Financial markets are fundamentally information-processing systems. 
+Asset prices reflect expectations about future cash flows, risk, and growth opportunities, all of which depend on the continuous arrival of new information. 
+Among the most economically significant and recurring information events in equity markets are corporate earnings announcements. 
+Quarterly and annual financial reports disclose updated accounting performance, managerial assessments, and forward-looking guidance, often triggering substantial stock price adjustments. 
+Understanding the short-term effect of financial reports on stock price movements remains a central problem in financial economics and, increasingly, in machine learning-driven asset pricing research.
+
+\section{Earnings Announcements as Information Events}
+
+The informational role of earnings announcements has been documented for more than five decades. 
+In their seminal study, Ray Ball and Philip Brown (1968)\cite{an-empirical-evaluation-of-accounting-income-numbers} provide early empirical evidence that accounting earnings convey value-relevant information that is rapidly incorporated into stock prices. 
+Their findings established the foundation for capital markets research in accounting and demonstrated that financial disclosures are not merely regulatory formalities but economically meaningful signals.
+
+Subsequent literature has consistently shown that earnings announcements are associated with abnormal returns, elevated volatility, and abnormal trading volume. 
+For example, Beaver (1968)\cite{information-content-of-annual-earnings-announcements} documents significant increases in trading activity around earnings releases, indicating that new information is actively processed by market participants. 
+Later research identifies systematic return patterns following earnings surprises. 
+Notably, Victor Bernard and Jacob Thomas (1989)\cite{pead} document post-earnings announcement drift (PEAD), showing that stock prices continue to drift in the direction of earnings surprises for weeks after the announcement. 
+This phenomenon suggests that price adjustment to earnings information may be gradual rather than instantaneous.
+
+More recent research continues to confirm the persistence of announcement-related anomalies, highlighting the ongoing relevance of earnings-based predictability (e.g., Livnat \& Mendenhall, 2006\cite{compare-pead-analysts-vs-time-series}). 
+The magnitude and consistency of these findings explain why institutional investors and quantitative funds devote substantial resources to analyzing earnings releases in real time.
+
+\section{The Efficient Market Hypothesis and Informational Efficiency}
+
+The theoretical benchmark for evaluating price reactions to financial reports is the Efficient Market Hypothesis (EMH), formalized by Eugene Fama (1970)\cite{efficient-capital-markets}. 
+Under the semi-strong form of the EMH, publicly available information, such as financial statements, should be immediately and fully reflected in stock prices. 
+If markets are semi-strong efficient, systematic short-term predictability following earnings announcements should not persist.
+
+However, empirical evidence of underreaction, post-announcement drift, and earnings momentum challenges the strictest interpretation of semi-strong efficiency. 
+Fama (1998)\cite{market-efficiency-long-term-returns} acknowledges that anomalies exist but argues that many may be artifacts of data-snooping or model misspecification. 
+Nonetheless, the persistence of earnings-related predictability across time periods and markets suggests that informational frictions, behavioral biases, or limits to arbitrage may prevent instantaneous price adjustment.
+
+From a machine learning perspective, this debate is particularly important. If markets are perfectly efficient, predictive models using publicly available earnings information should not systematically outperform chance. 
+Conversely, if markets exhibit delayed information incorporation, data-driven models may capture economically meaningful patterns.
+
+\section{Information Processing, Behavioral Frictions, and Attention}
+
+Financial reports are complex, high-dimensional documents containing both structured numerical information (earnings per share, revenue growth, margins) and unstructured textual content (management discussion, risk disclosures, forward-looking statements). 
+Processing this information requires cognitive effort and domain expertise. 
+Behavioral finance research suggests that investors may exhibit limited attention and underreaction when confronted with complex disclosures.
+
+For instance, Hirshleifer and Teoh (2003)\cite{limited-attention-information-disclosure} argue that investor inattention contributes to post-announcement drift. 
+Similarly, Barberis, Shleifer, and Vishny (1998)\cite{model-of-investor-sentiment} develop a model of investor underreaction and overreaction driven by behavioral biases. 
+These theoretical and empirical findings imply that information processing is not frictionless, creating the possibility of short-term predictability around disclosure events.
+
+Moreover, market participants are heterogeneous. 
+Institutional investors, retail traders, and algorithmic trading systems may interpret and act upon earnings information at different speeds. 
+As a result, prices may adjust through a dynamic process rather than an instantaneous jump, reinforcing the empirical relevance of studying short-term post-announcement effects.
+
+\section{Limitations of Price-Only Modeling}
+
+Traditional quantitative finance models frequently rely on historical price, return, and volume data. While these variables capture market dynamics and technical patterns, they do not directly encode new fundamental information. 
+Earnings announcements represent discrete information shocks that can alter expectations about future cash flows and risk premia.
+
+Empirical asset pricing research demonstrates that earnings surprises, defined as the deviation between reported earnings and market expectations, are strongly associated with abnormal returns (Bernard \& Thomas, 1989\cite{pead}). 
+This suggests that numerical market data alone may be insufficient to explain short-term price adjustments following disclosures. Instead, models that incorporate financial report information may capture incremental predictive content beyond past prices.
+
+Recent advances in machine learning and natural language processing have further emphasized the informational richness of financial text. 
+For example, Loughran and Tim McDonald (2011)\cite{textual-analysis-dictionaries-and-10ks} develop domain-specific financial sentiment dictionaries, demonstrating that textual tone in corporate filings contains economically meaningful information. 
+Similarly, Gu, Kelly, and Xiu (2020)\cite{empirical-asset-pricing-via-machine-learning} show that machine learning methods can extract predictive signals from large financial datasets, reshaping modern empirical asset pricing.
+
+These developments underscore the importance of integrating structured financial data and unstructured disclosure information within predictive frameworks.
+
+\section{Relevance for Machine Learning in Finance}
+
+The intersection of earnings announcements and machine learning is particularly compelling. Machine learning models are well-suited to capturing nonlinear relationships, high-dimensional interactions, and complex patterns in large datasets. In financial contexts, they provide flexible tools for testing whether publicly available disclosures contain incremental predictive content beyond traditional risk factors.
+
+However, applying machine learning to earnings-based prediction also serves a deeper purpose: it provides a data-driven test of informational efficiency. If short-term predictability persists after controlling for conventional factors, this may indicate limits to market efficiency or incomplete information diffusion. Conversely, weak predictive performance would reinforce the EMH benchmark.
+
+Thus, studying the short-term market impact of financial reports is not merely a forecasting exercise. It directly contributes to longstanding debates in asset pricing regarding market efficiency, behavioral frictions, and the role of public disclosures in price formation.
