@@ -6,12 +6,12 @@ import pandas as pd
 import numpy as np
 import torch
 from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import BertTokenizer, BertForSequenceClassification
 
 
 class FinBertSentimentEnhancer:
     TEXT_COLS = ["mda_text", "market_risk_text"]
-    MODEL_NAME = "ProsusAI/finbert"
+    MODEL_NAME = "yiyanghkust/finbert-tone" # this was pretrained on 10-K & 10-Q filings
 
     def __init__(
         self,
@@ -23,7 +23,9 @@ class FinBertSentimentEnhancer:
         save_every=200,
         cache_dir="finbert_cache",
         use_chunk_cache=True,   # set False on Kaggle for speed
-        seed=42
+        seed=42,
+        shard_id=0,    
+        num_shards=1,         
     ):
         self.chunk_size = chunk_size
         self.stride = stride
@@ -34,17 +36,52 @@ class FinBertSentimentEnhancer:
         self.cache_dir = cache_dir
         self.use_chunk_cache = use_chunk_cache
         self.seed = seed
+        
+        self.shard_id = shard_id
+        self.num_shards = num_shards
 
         self.chunk_cache_dir = os.path.join(cache_dir, "chunk_cache")
-        self.result_cache_path = os.path.join(cache_dir, "finbert_results_checkpoint.parquet")
-
-        # os.makedirs(self.cache_dir, exist_ok=True)
+        self.result_cache_path = os.path.join(
+            cache_dir,
+            f"finbert_results_checkpoint_shard_{self.shard_id}.parquet"
+        )
+        
+        os.makedirs(self.cache_dir, exist_ok=True)
         # os.makedirs(self.chunk_cache_dir, exist_ok=True)
+        
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        print("Using device:", self.device)
+
+        print("Loading FinBERT self.model...")
+        self.tokenizer = BertTokenizer.from_pretrained('yiyanghkust/finbert-tone')
+        self.model = BertForSequenceClassification.from_pretrained('yiyanghkust/finbert-tone',num_labels=3)
+        
+        self.model.to(self.device)
+        
+        self.id2label = self.model.config.id2label
+        self.label2id = {v.lower(): k for k, v in self.id2label.items()}
+
+        print("Model label mapping:", self.id2label)
+        
+        try:
+            self.neg_idx = self.label2id["negative"]
+            self.neu_idx = self.label2id["neutral"]
+            self.pos_idx = self.label2id["positive"]
+        except KeyError:
+            raise ValueError(
+                f"Model labels must include 'negative', 'neutral', 'positive'. "
+                f"Found: {list(self.label2id.keys())}"
+            )
+
+        print("Internal reorder indices:",
+            "neg=", self.neg_idx,
+            "neu=", self.neu_idx,
+            "pos=", self.pos_idx)
 
     # -----------------------------
     # Public API
     # -----------------------------
-    def add_sentiment_scores(self, input_path, output_path):
+    def add_sentiment_scores(self, input_path, output_path=None):
         print("Loading dataset...")
         df = pd.read_parquet(input_path)
         print("Dataset shape:", df.shape)
@@ -61,7 +98,8 @@ class FinBertSentimentEnhancer:
         df = df.drop(columns=self.TEXT_COLS, errors="ignore")
 
         print("Saving final dataset to:", output_path)
-        df.to_parquet(output_path, index=False)
+        if output_path is not None:
+            df.to_parquet(output_path, index=False)
 
         print("Done.")
         print(df[
@@ -78,7 +116,7 @@ class FinBertSentimentEnhancer:
     def _chunk_cache_path(self, idx):
         return os.path.join(self.chunk_cache_dir, f"doc_chunks_{idx}.pkl")
 
-    def _load_or_create_chunks(self, idx, row, tokenizer):
+    def _load_or_create_chunks(self, idx, row):
         """
         Loads chunks from disk if caching enabled, otherwise generates them.
         """
@@ -95,7 +133,7 @@ class FinBertSentimentEnhancer:
         risk = row.get("market_risk_text", "") or ""
         combined = (mda + "\n\n" + risk).strip()
 
-        chunks = self._chunk_text_stratified(combined, tokenizer)
+        chunks = self._chunk_text_stratified(combined)
 
         if self.use_chunk_cache:
             try:
@@ -109,7 +147,7 @@ class FinBertSentimentEnhancer:
     # -----------------------------
     # Chunking strategy
     # -----------------------------
-    def _chunk_text_stratified(self, text, tokenizer):
+    def _chunk_text_stratified(self, text):
         """
         Chunk the full document into overlapping token windows.
         Stratified selection:
@@ -121,7 +159,7 @@ class FinBertSentimentEnhancer:
         if not text:
             return []
 
-        tokens = tokenizer.encode(text, add_special_tokens=False)
+        tokens = self.tokenizer.encode(text, add_special_tokens=False)
         if len(tokens) == 0:
             return []
 
@@ -159,35 +197,6 @@ class FinBertSentimentEnhancer:
         return head + middle + tail
 
     # -----------------------------
-    # Aggregation
-    # -----------------------------
-    def _aggregate_chunk_probs(self, chunk_probs):
-        """
-        chunk_probs: list of [neg, neu, pos]
-
-        Returns:
-          mean_probs: [neg, neu, pos]
-          std_probs:  [neg, neu, pos]
-          polarity_std: std(pos-neg)
-        """
-        if len(chunk_probs) == 0:
-            return (
-                np.array([0.0, 1.0, 0.0], dtype=np.float32),
-                np.array([0.0, 0.0, 0.0], dtype=np.float32),
-                0.0
-            )
-
-        arr = np.vstack(chunk_probs).astype(np.float32)
-
-        mean_probs = arr.mean(axis=0)
-        std_probs = arr.std(axis=0, ddof=0)
-
-        polarity = arr[:, 2] - arr[:, 0]  # pos - neg
-        polarity_std = float(np.std(polarity, ddof=0))
-
-        return mean_probs, std_probs, polarity_std
-
-    # -----------------------------
     # Checkpointing
     # -----------------------------
     def _ensure_sentiment_columns(self, df):
@@ -223,22 +232,51 @@ class FinBertSentimentEnhancer:
         save_df.to_parquet(self.result_cache_path, index=False)
 
     # -----------------------------
+    # Aggregation
+    # -----------------------------
+    def _aggregate_chunk_probs(self, chunk_probs):
+        """
+        chunk_probs: list of [neg, neu, pos]
+
+        Returns:
+          mean_probs: [neg, neu, pos]
+          std_probs:  [neg, neu, pos]
+          polarity_std: std(pos-neg)
+        """
+        if len(chunk_probs) == 0:
+            return (
+                np.array([0.0, 1.0, 0.0], dtype=np.float32),
+                np.array([0.0, 0.0, 0.0], dtype=np.float32),
+                0.0
+            )
+
+        arr = np.vstack(chunk_probs).astype(np.float32)
+
+        mean_probs = arr.mean(axis=0)
+        std_probs = arr.std(axis=0, ddof=0)
+
+        polarity = arr[:, 2] - arr[:, 0]  # pos - neg
+        polarity_std = float(np.std(polarity, ddof=0))
+
+        return mean_probs, std_probs, polarity_std
+    
+    # -----------------------------
     # Main batched inference
     # -----------------------------
     def _run_finbert_sentiment_batched(self, df):
-        print("Loading FinBERT model...")
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        print("Using device:", device)
-
-        tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
-        model = AutoModelForSequenceClassification.from_pretrained(self.MODEL_NAME)
-        model.to(device)
-        model.eval()
+        self.model.eval()
 
         checkpoint_df = self._load_checkpoint(df)
 
+        all_shard_idxs = self._get_shard_indices(checkpoint_df)
+
         unfinished_mask = checkpoint_df["finbert_neg"].isna().values
-        unfinished_idxs = np.where(unfinished_mask)[0]
+        unfinished_idxs = [
+            idx for idx in all_shard_idxs
+            if unfinished_mask[idx]
+        ]
+
+        unfinished_idxs = np.array(unfinished_idxs)
 
         print(f"Total docs: {len(checkpoint_df)}")
         print(f"Remaining docs: {len(unfinished_idxs)}")
@@ -266,7 +304,7 @@ class FinBertSentimentEnhancer:
                 # -----------------------------
                 for idx in batch_idxs:
                     row = df.iloc[idx]
-                    chunks = self._load_or_create_chunks(idx, row, tokenizer)
+                    chunks = self._load_or_create_chunks(idx, row)
 
                     if len(chunks) == 0:
                         df.at[idx, "finbert_neg"] = 0.0
@@ -295,24 +333,31 @@ class FinBertSentimentEnhancer:
                     batch_chunks = all_chunks[j:j + self.batch_size]
                     batch_owners = chunk_owner[j:j + self.batch_size]
 
-                    encoded = tokenizer.pad(
+                    encoded = self.tokenizer.pad(
                         {"input_ids": batch_chunks},
                         padding=True,
                         return_tensors="pt"
                     )
                     
-                    input_ids = encoded["input_ids"].to(device)
-                    attention_mask = encoded["attention_mask"].to(device)
+                    input_ids = encoded["input_ids"].to(self.device)
+                    attention_mask = encoded["attention_mask"].to(self.device)
 
-                    logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
+                    logits = self.model(input_ids=input_ids, attention_mask=attention_mask).logits
                     probs = torch.softmax(logits, dim=-1).detach().cpu().numpy()
 
                     for p, owner in zip(probs, batch_owners):
-                        probs_by_doc[owner].append(p)
+                        # Dynamically reorder into [neg, neu, pos]
+                        reordered = np.array([
+                            p[self.neg_idx],
+                            p[self.neu_idx],
+                            p[self.pos_idx]
+                        ], dtype=np.float32)
+
+                        probs_by_doc[owner].append(reordered)
 
                     # free memory
                     del encoded, input_ids, attention_mask, logits, probs
-                    if device == "cuda":
+                    if self.device == "cuda":
                         torch.cuda.empty_cache()
 
                 # -----------------------------
@@ -348,13 +393,27 @@ class FinBertSentimentEnhancer:
                     self._save_checkpoint(df)
                     processed_since_save = 0
 
-            # print("Saving final checkpoint...")
-            # self._save_checkpoint(df)
+            print("Saving final checkpoint...")
+            self._save_checkpoint(df)
 
         return df
+    
+    def _get_shard_indices(self, df):
+        total_indices = np.arange(len(df))
+
+        # Otherwise split evenly by shard_id
+        shard_indices = total_indices[
+            total_indices % self.num_shards == self.shard_id
+        ]
+
+        return shard_indices
 
 
 if __name__ == "__main__":
+    
+    shard_id = 0
+    num_shards = 2
+    
     enhancer = FinBertSentimentEnhancer(
         chunk_size=384,
         stride=64,
@@ -363,10 +422,12 @@ if __name__ == "__main__":
         doc_batch_size=512,     # docs per outer batch
         save_every=100000,
         cache_dir="/kaggle/input/sec-filings-with-stock-price-features",
-        use_chunk_cache=False  # Kaggle: better False (disk I/O is slow)
+        use_chunk_cache=False,  # Kaggle: better False (disk I/O is slow)
+        shard_id=0,
+        num_shards=2
     )
 
     enhancer.add_sentiment_scores(
         input_path="/kaggle/input/sec-filings-with-stock-price-features/sec_filings_with_price_features_and_labels_shortened.parquet",
-        output_path="us_market_dataset.parquet"
+        output_path=f"us_market_dataset_shard_{shard_id}.parquet"
     )

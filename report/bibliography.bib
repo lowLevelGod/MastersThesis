@@ -145,14 +145,20 @@ doi={None},
 url={https://ideas.repec.org/p/chf/rpseri/rp1871.html},
 }
 
-@misc{yang2020finbertpretrainedlanguagemodel,
-      title={FinBERT: A Pretrained Language Model for Financial Communications}, 
-      author={Yi Yang and Mark Christopher Siy UY and Allen Huang},
-      year={2020},
-      eprint={2006.08097},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2006.08097}, 
+@article{yang2020finbert,
+  author       = {Yi Yang and
+                  Mark Christopher Siy Uy and
+                  Allen Huang},
+  title        = {FinBERT: {A} Pretrained Language Model for Financial Communications},
+  journal      = {CoRR},
+  volume       = {abs/2006.08097},
+  year         = {2020},
+  url          = {https://arxiv.org/abs/2006.08097},
+  eprinttype    = {arXiv},
+  eprint       = {2006.08097},
+  timestamp    = {Mon, 05 Feb 2024 12:16:33 +0100},
+  biburl       = {https://dblp.org/rec/journals/corr/abs-2006-08097.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
 }
 
 @misc{devlin2019bertpretrainingdeepbidirectional,
@@ -165,12 +171,120 @@ url={https://ideas.repec.org/p/chf/rpseri/rp1871.html},
       url={https://arxiv.org/abs/1810.04805}, 
 }
 
-@misc{vaswani2023attentionneed,
-      title={Attention Is All You Need}, 
-      author={Ashish Vaswani and Noam Shazeer and Niki Parmar and Jakob Uszkoreit and Llion Jones and Aidan N. Gomez and Lukasz Kaiser and Illia Polosukhin},
-      year={2023},
-      eprint={1706.03762},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/1706.03762}, 
+@article{vaswani2017attention,
+  author       = {Ashish Vaswani and
+                  Noam Shazeer and
+                  Niki Parmar and
+                  Jakob Uszkoreit and
+                  Llion Jones and
+                  Aidan N. Gomez and
+                  Lukasz Kaiser and
+                  Illia Polosukhin},
+  title        = {Attention Is All You Need},
+  journal      = {CoRR},
+  volume       = {abs/1706.03762},
+  year         = {2017},
+  url          = {http://arxiv.org/abs/1706.03762},
+  eprinttype    = {arXiv},
+  eprint       = {1706.03762},
+  timestamp    = {Sat, 23 Jan 2021 01:20:40 +0100},
+  biburl       = {https://dblp.org/rec/journals/corr/VaswaniSPUJGKP17.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
+
+@inproceedings{lee-etal-2014-importance,
+    title = "On the Importance of Text Analysis for Stock Price Prediction",
+    author = "Lee, Heeyoung  and
+      Surdeanu, Mihai  and
+      MacCartney, Bill  and
+      Jurafsky, Dan",
+    editor = "Calzolari, Nicoletta  and
+      Choukri, Khalid  and
+      Declerck, Thierry  and
+      Loftsson, Hrafn  and
+      Maegaard, Bente  and
+      Mariani, Joseph  and
+      Moreno, Asuncion  and
+      Odijk, Jan  and
+      Piperidis, Stelios",
+    booktitle = "Proceedings of the Ninth International Conference on Language Resources and Evaluation ({LREC}'14)",
+    month = may,
+    year = "2014",
+    address = "Reykjavik, Iceland",
+    publisher = "European Language Resources Association (ELRA)",
+    url = "https://aclanthology.org/L14-1048/",
+    pages = "1170--1175",
+    abstract = "We investigate the importance of text analysis for stock price prediction. In particular, we introduce a system that forecasts companies stock price changes (UP, DOWN, STAY) in response to financial events reported in 8-K documents. Our results indicate that using text boosts prediction accuracy over 10{\%} (relative) over a strong baseline that incorporates many financially-rooted features. This impact is most important in the short term (i.e., the next day after the financial event) but persists for up to five days."
+}
+
+@article{tetlock2007giving,
+author = {TETLOCK, PAUL},
+year = {2007},
+month = {02},
+pages = {1139-1168},
+title = {Giving Content to Investor Sentiment: The Role of Media in the Stock Market},
+volume = {62},
+journal = {Journal of Finance},
+doi = {10.2139/ssrn.685145}
+}
+
+@article{schumaker2009textual,
+author = {Schumaker, Rob and Chen, Hsinchun},
+year = {2009},
+month = {02},
+pages = {},
+title = {Textual analysis of stock market prediction using breaking financial news: The AZFin text system},
+volume = {27},
+journal = {ACM Trans. Inf. Syst.},
+doi = {10.1145/1462198.1462204}
+}
+
+@inproceedings{ding2015deep,
+author = {Ding, Xiao and Zhang, Yue and Liu, Ting and Duan, Junwen},
+title = {Deep learning for event-driven stock prediction},
+year = {2015},
+isbn = {9781577357384},
+publisher = {AAAI Press},
+abstract = {We propose a deep learning method for event-driven stock market prediction. First, events are extracted from news text, and represented as dense vectors, trained using a novel neural tensor network. Second, a deep convolutional neural network is used to model both short-term and long-term influences of events on stock price movements. Experimental results show that our model can achieve nearly 6\% improvements on S&P 500 index prediction and individual stock prediction, respectively, compared to state-of-the-art baseline methods. In addition, market simulation results show that our system is more capable of making profits than previously reported systems trained on S&P 500 stock historical data.},
+booktitle = {Proceedings of the 24th International Conference on Artificial Intelligence},
+pages = {2327–2333},
+numpages = {7},
+location = {Buenos Aires, Argentina},
+series = {IJCAI'15}
+}
+
+@inproceedings{hu2018listening,
+author = {Hu, Ziniu and Liu, Weiqing and Bian, Jiang and Liu, Xuanzhe and Liu, Tie-Yan},
+title = {Listening to Chaotic Whispers: A Deep Learning Framework for News-oriented Stock Trend Prediction},
+year = {2018},
+isbn = {9781450355810},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3159652.3159690},
+doi = {10.1145/3159652.3159690},
+abstract = {Stock trend prediction plays a critical role in seeking maximized profit from the stock investment. However, precise trend prediction is very difficult since the highly volatile and non-stationary nature of the stock market. Exploding information on the Internet together with the advancing development of natural language processing and text mining techniques have enabled investors to unveil market trends and volatility from online content. Unfortunately, the quality, trustworthiness, and comprehensiveness of online content related to stock market vary drastically, and a large portion consists of the low-quality news, comments, or even rumors. To address this challenge, we imitate the learning process of human beings facing such chaotic online news, driven by three principles: sequential content dependency, diverse influence, and effective and efficient learning. In this paper, to capture the first two principles, we designed a Hybrid Attention Networks(HAN) to predict the stock trend based on the sequence of recent related news. Moreover, we apply the self-paced learning mechanism to imitate the third principle. Extensive experiments on real-world stock market data demonstrate the effectiveness of our framework. A further simulation illustrates that a straightforward trading strategy based on our proposed framework can significantly increase the annualized return.},
+booktitle = {Proceedings of the Eleventh ACM International Conference on Web Search and Data Mining},
+pages = {261–269},
+numpages = {9},
+keywords = {text mining, stock trend prediction, deep learning},
+location = {Marina Del Rey, CA, USA},
+series = {WSDM '18}
+}
+
+
+@article{fischer2018deep,
+abstract = {Long short-term memory (LSTM) networks are a state-of-the-art technique for sequence learning. They are less commonly applied to financial time series predictions, yet inherently suitable for this domain. We deploy LSTM networks for predicting out-of-sample directional movements for the constituent stocks of the S&P 500 from 1992 until 2015. With daily returns of 0.46 percent and a Sharpe ratio of 5.8 prior to transaction costs, we find LSTM networks to outperform memory-free classification methods, i.e., a random forest (RAF), a deep neural net (DNN), and a logistic regression classifier (LOG). The outperformance relative to the general market is very clear from 1992 to 2009, but as of 2010, excess returns seem to have been arbitraged away with LSTM profitability fluctuating around zero after transaction costs. We further unveil sources of profitability, thereby shedding light into the black box of artificial neural networks. Specifically, we find one common pattern among the stocks selected for trading -- they exhibit high volatility and a short-term reversal return profile. Leveraging these findings, we are able to formalize a rules-based short-term reversal strategy that yields 0.23 percent prior to transaction costs. Further regression analysis unveils low exposure of the LSTM returns to common sources of systematic risk -- also compared to the three benchmark models.},
+author = {Thomas Fischer and Christopher Krauss},
+doi = {https://doi.org/10.1016/j.ejor.2017.11.054},
+issn = {0377-2217},
+journal = {European Journal of Operational Research},
+keywords = {Finance, Statistical arbitrage, LSTM, Machine learning, Deep learning},
+number = {2},
+pages = {654-669},
+title = {Deep learning with long short-term memory networks for financial market predictions},
+url = {https://www.sciencedirect.com/science/article/pii/S0377221717310652},
+volume = {270},
+year = {2018},
+bdsk-url-1 = {https://www.sciencedirect.com/science/article/pii/S0377221717310652},
+bdsk-url-2 = {https://doi.org/10.1016/j.ejor.2017.11.054}
 }

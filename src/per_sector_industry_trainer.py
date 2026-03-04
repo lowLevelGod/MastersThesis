@@ -513,63 +513,21 @@ def run_group_experiment(
 # -------------------------
 # SECTOR TRAINING
 # -------------------------
-# run_group_experiment(
-#     df=df,
-#     group_col="sector",
-#     models_dict=classification_models,
-#     task="classification",
-#     min_samples=500,
-#     results_prefix="group_results"
-# )
-
-# run_group_experiment(
-#     df=df,
-#     group_col="sector",
-#     models_dict=regression_models,
-#     task="regression",
-#     min_samples=500,
-#     results_prefix="group_results"
-# )
-
-# -------------------------
-# INDUSTRY TRAINING
-# -------------------------
-# run_group_experiment(
-#     df=df,
-#     group_col="industry",
-#     models_dict=classification_models,
-#     task="classification",
-#     min_samples=300,
-#     results_prefix="group_results"
-# )
-
-# run_group_experiment(
-#     df=df,
-#     group_col="industry",
-#     models_dict=regression_models,
-#     task="regression",
-#     min_samples=300,
-#     results_prefix="group_results"
-# )
-
-# -----------------------
-# COMPANY TRAINING
-# -----------------------
 run_group_experiment(
     df=df,
-    group_col="ticker",
+    group_col="sector",
     models_dict=classification_models,
     task="classification",
-    min_samples=60,
+    min_samples=500,
     results_prefix="group_results"
 )
 
 run_group_experiment(
     df=df,
-    group_col="ticker",
+    group_col="sector",
     models_dict=regression_models,
     task="regression",
-    min_samples=60,
+    min_samples=500,
     results_prefix="group_results"
 )
 
@@ -735,6 +693,48 @@ def analyze_group_results(group_col, task, models_dict):
 
         print("\nAnalysis completed for:", model_name)
         
+
+# -------------------------
+# INDUSTRY TRAINING
+# -------------------------
+# run_group_experiment(
+#     df=df,
+#     group_col="industry",
+#     models_dict=classification_models,
+#     task="classification",
+#     min_samples=300,
+#     results_prefix="group_results"
+# )
+
+# run_group_experiment(
+#     df=df,
+#     group_col="industry",
+#     models_dict=regression_models,
+#     task="regression",
+#     min_samples=300,
+#     results_prefix="group_results"
+# )
+
+# -----------------------
+# COMPANY TRAINING
+# -----------------------
+# run_group_experiment(
+#     df=df,
+#     group_col="ticker",
+#     models_dict=classification_models,
+#     task="classification",
+#     min_samples=60,
+#     results_prefix="group_results"
+# )
+
+# run_group_experiment(
+#     df=df,
+#     group_col="ticker",
+#     models_dict=regression_models,
+#     task="regression",
+#     min_samples=60,
+#     results_prefix="group_results"
+# )
         
 # analyze_group_results("sector", "classification", classification_models)
 # analyze_group_results("sector", "regression", regression_models)
@@ -742,5 +742,5 @@ def analyze_group_results(group_col, task, models_dict):
 # analyze_group_results("industry", "classification", classification_models)
 # analyze_group_results("industry", "regression", regression_models)
 
-analyze_group_results("ticker", "classification", classification_models)
-analyze_group_results("ticker", "regression", regression_models)
+# analyze_group_results("ticker", "classification", classification_models)
+# analyze_group_results("ticker", "regression", regression_models)

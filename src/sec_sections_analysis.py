@@ -71,99 +71,211 @@ import textwrap
 #     for i, row in df_sample.iterrows():
 #         pretty_print_sample(row, col, i)
 
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-# # -----------------------------
-# # Main quality analysis function
-# # -----------------------------
+from matplotlib.ticker import FuncFormatter
+
+def set_publication_style():
+    sns.set_theme(style="white")  # clean white background
+    
+    plt.rcParams.update({
+        "figure.figsize": (8, 5),
+        "figure.dpi": 300,
+        "savefig.dpi": 300,
+        "font.size": 12,
+        "axes.titlesize": 14,
+        "axes.labelsize": 12,
+        "xtick.labelsize": 11,
+        "ytick.labelsize": 11,
+        "legend.fontsize": 11,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.grid": False,
+        "pdf.fonttype": 42,   # editable text in Illustrator
+    })
+
+def thousands_formatter(x, pos):
+    return f"{int(x):,}"
+
 def analyze_extraction_quality(
     sec_df: pd.DataFrame,
     text_cols=("mda_text", "market_risk_text"),
 ):
     """
-    Analyze extracted SEC text sections and detect suspicious extractions.
-    Prints summary stats + plots + suspicious examples.
+    Exploratory Data Analysis for SEC text extraction quality.
+    Produces descriptive statistics and publication-ready plots.
     """
 
+    set_publication_style()
+    
     df = sec_df.copy()
 
     print("\n==================== BASIC DATASET INFO ====================")
-    print("Rows:", len(df))
-    print("Columns:", df.columns.tolist())
+    print(f"Number of rows: {len(df):,}")
+    print(f"Number of columns: {len(df.columns)}")
+    print("Columns:")
+    print(df.columns.tolist())
 
+    # ----------------------------------------------------------
+    # Ensure datetime
+    # ----------------------------------------------------------
     if "filing_date" in df.columns:
         df["filing_date"] = pd.to_datetime(df["filing_date"], errors="coerce")
 
-    print("\n==================== MISSING RATE ====================")
+    # ----------------------------------------------------------
+    # 1️⃣ Missing Rates (empty string = missing)
+    # ----------------------------------------------------------
+    print("\n==================== MISSING RATE (%) ====================")
+
     for col in text_cols:
         if col not in df.columns:
             print(f"{col}: column not found")
             continue
 
-        missing_mask = df[col].isna() | (df[col].astype(str).str.strip() == "")
-        missing_rate = missing_mask.mean()
+        missing_mask = df[col].fillna("").astype(str).str.strip() == ""
+        missing_rate = missing_mask.mean() * 100
 
-        print(f"{col}: missing rate = {missing_rate:.3f}")
+        print(f"{col}: {missing_rate:.2f}% missing")
+
+    # ----------------------------------------------------------
+    # 2️⃣ Character Length Statistics (Paper-ready formatting)
+    # ----------------------------------------------------------
+    print("\n==================== LENGTH STATISTICS ====================")
+
+    for col in text_cols:
+        if col not in df.columns:
+            continue
+
+        df[f"{col}_len"] = df[col].fillna("").astype(str).str.len()
         
-        print("\n==================== LENGTH STATS ====================")
-        for col in text_cols:
-            if col not in df.columns:
-                print(f"{col}: column not found")
-                continue
+        lengths = df[f"{col}_len"]
+        
+        positive_lengths = lengths[lengths > 0]
 
-            df[f"{col}_len"] = df[col].fillna("").astype(str).str.len()
+        percentiles = [0.1, 0.25, 0.5, 0.75, 0.9]
+        stats = positive_lengths.describe(percentiles=percentiles)
 
-            # exclude zero lengths
-            lengths = df.loc[df[f"{col}_len"] > 0, f"{col}_len"]
+        print(f"\n--- {col} character length ---")
+        print(f"Mean: {stats['mean']:,.0f}")
+        print(f"Std:  {stats['std']:,.0f}")
+        print(f"Min:  {stats['min']:,.0f}")
+        print(f"10th percentile: {stats['10%']:,.0f}")
+        print(f"25th percentile: {stats['25%']:,.0f}")
+        print(f"Median: {stats['50%']:,.0f}")
+        print(f"75th percentile: {stats['75%']:,.0f}")
+        print(f"90th percentile: {stats['90%']:,.0f}")
+        print(f"Max:  {stats['max']:,.0f}")
 
-            if lengths.empty:
-                print(f"\n--- {col} length stats ---")
-                print("No non-empty values.")
-                continue
+    # ----------------------------------------------------------
+    # 3️⃣ Character Length Distributions
+    # ----------------------------------------------------------
+    print("\nGenerating length distribution plots...")
 
-            stats = lengths.describe(percentiles=[0.1, 0.25, 0.5, 0.75, 0.9])
-            print(f"\n--- {col} length stats (excluding zeros) ---")
-            print(stats)
+    for col in text_cols:
+        if col not in df.columns:
+            continue
 
+        lengths = df[f"{col}_len"]
+        
+        positive_lengths = lengths[lengths > 0]
 
-        print("\n==================== PLOTS ====================")
-        for col in text_cols:
-            if col not in df.columns:
-                continue
+        plt.figure()
+        sns.histplot(positive_lengths, bins=60)
 
-            # exclude zero lengths in plot
-            lengths = df.loc[df[f"{col}_len"] > 0, f"{col}_len"]
+        plt.xscale("log")
 
-            if lengths.empty:
-                continue
+        plt.title(f"Log-Scale Distribution of {col.replace('_', ' ').upper()} Length")
+        plt.xlabel("Number of Characters (log scale)")
+        plt.ylabel("Frequency")
+        
+        median_val = positive_lengths.median()
+        mean_val = positive_lengths.mean()
 
-            plt.figure()
-            lengths.hist(bins=60)
-            plt.title(f"Length distribution for {col} (excluding zeros)")
-            plt.xlabel("Characters")
-            plt.ylabel("Count")
-            plt.savefig(f"{col}_length_distribution.pdf")
-            plt.close()
+        plt.axvline(median_val, linestyle="--", linewidth=1, label="Median")
+        plt.axvline(mean_val, linestyle=":", linewidth=1, label="Mean")
+        plt.legend(frameon=False)
 
-        return df
+        plt.gca().xaxis.set_major_formatter(FuncFormatter(thousands_formatter))
 
+        plt.tight_layout()
+        plt.savefig(f"{col}_length_distribution_log.pdf", bbox_inches="tight")
+        plt.close()
 
-# # -----------------------------
-# # MAIN SCRIPT
-# # -----------------------------
+    # ----------------------------------------------------------
+    # 4️⃣ Filings Per Year Distribution
+    # ----------------------------------------------------------
+    if "filing_date" in df.columns:
+        df["year"] = df["filing_date"].dt.year
+        filings_per_year = df["year"].value_counts().sort_index()
+
+        plt.figure()
+        filings_per_year.plot(kind="bar", width=0.8)
+
+        plt.title("Number of SEC Filings per Year")
+        plt.xlabel("Year")
+        plt.ylabel("Number of Filings")
+
+        plt.gca().yaxis.set_major_formatter(FuncFormatter(thousands_formatter))
+
+        plt.tight_layout()
+        plt.savefig("filings_per_year_distribution.pdf", bbox_inches="tight")
+        plt.close()
+
+    # ----------------------------------------------------------
+    # 5️⃣ Missing Rate by Form Type (10-K vs 10-Q)
+    # ----------------------------------------------------------
+    if "form_type" in df.columns:
+        missing_data = []
+
+        for form in df["form_type"].unique():
+            df_form = df[df["form_type"] == form]
+
+            for col in text_cols:
+                if col not in df_form.columns:
+                    continue
+
+                missing_mask = df_form[col].fillna("").astype(str).str.strip() == ""
+                missing_rate = missing_mask.mean() * 100
+
+                missing_data.append({
+                    "form_type": form,
+                    "section": col.replace("_text", "").upper(),
+                    "missing_rate": missing_rate
+                })
+
+        missing_df = pd.DataFrame(missing_data)
+
+        plt.figure()
+        sns.barplot(
+            data=missing_df,
+            x="form_type",
+            y="missing_rate",
+            hue="section"
+        )
+
+        plt.title("Missing Section Rate by Form Type")
+        plt.xlabel("Form Type")
+        plt.ylabel("Missing Rate (%)")
+
+        plt.gca().yaxis.set_major_formatter(lambda x, pos: f"{x:.0f}%")
+
+        plt.legend(title="Section", frameon=False)
+
+        plt.tight_layout()
+        plt.savefig("missing_rate_by_form_type.pdf", bbox_inches="tight")
+        plt.close()
+
+    print("\nEDA complete.")
+    
+    return df
+
 if __name__ == "__main__":
-    parquet_path = "parsed_sec_filings.parquet"
+    parquet_path = "parsed_sec_filings_cleaned.parquet"
 
     print("Loading parquet...")
     sec_df = pd.read_parquet(parquet_path)
-    
-    import pandas as pd
 
-    # Compute lengths
-    sec_df["mda_len"] = sec_df["mda_text"].fillna("").astype(str).str.len()
-    sec_df["market_risk_len"] = sec_df["market_risk_text"].fillna("").astype(str).str.len()
-
-    # Run analysis
-    sec_df_enhanced = analyze_extraction_quality(
-        sec_df,
-        text_cols=("mda_text", "market_risk_text"),
-    )
+    sec_df_enhanced = analyze_extraction_quality(sec_df)

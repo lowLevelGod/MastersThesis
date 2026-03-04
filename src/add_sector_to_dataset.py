@@ -3,7 +3,7 @@ import pandas as pd
 # -------------------------------
 # Load datasets
 # -------------------------------
-df_market = pd.read_parquet("us_market_dataset.parquet")
+df_market = pd.read_parquet("us_market_dataset_finbert.parquet")
 df_nasdaq = pd.read_csv("sector_ticker_mapping.csv")  # Your NASDAQ CSV
 
 # Ensure tickers are strings and uppercase

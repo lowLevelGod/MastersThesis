@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-PARQUET_PATH = "us_market_dataset.parquet"
+PARQUET_PATH = "us_market_dataset_finbert.parquet"
 N_SAMPLES = 10
 
 df = pd.read_parquet(PARQUET_PATH)

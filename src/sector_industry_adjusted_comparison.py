@@ -657,5 +657,5 @@ def analyze_full_results(task, models_dict):
 
         print("\nAnalysis completed for:", model_name)
         
-analyze_full_results("classification", classification_models)
-analyze_full_results("regression", regression_models)
+# analyze_full_results("classification", classification_models)
+# analyze_full_results("regression", regression_models)
