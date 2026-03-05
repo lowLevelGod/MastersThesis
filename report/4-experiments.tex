@@ -1,0 +1,146 @@
+\chapter{Experiments}
+
+\section{Experimental Objective}
+
+The main objective of the experiments conducted in this work is to analyse the impact of financial report sentiment on short-term stock price movements. More specifically, the experiments aim to determine whether incorporating sentiment-derived features from financial reports improves the predictive performance of machine learning models compared to models that rely solely on historical stock price indicators.
+
+The prediction horizon considered in this work is the short term, ranging from one to seven trading days following the publication of a financial report. This interval was selected because financial disclosures are expected to influence market reactions shortly after becoming publicly available.
+
+The experiments therefore compare two categories of models:
+
+\begin{itemize}
+\item models trained exclusively on stock market indicators derived from historical price and volume data (such as moving averages, momentum indicators and trading volume);
+\item models trained on the same stock market indicators augmented with sentiment features extracted from financial reports.
+\end{itemize}
+
+The primary interest of this analysis is not to obtain the most accurate predictive model for stock price forecasting. Instead, the goal is to measure the relative performance improvement introduced by sentiment information. In other words, the experiments focus on observing the performance difference between models trained without sentiment features and models trained with sentiment features.
+
+This comparison is performed across two prediction tasks, classification and regression, across multiple machine learning models and across prediction horizons ranging from one to seven days.
+
+The resulting performance differences allow us to quantify whether textual sentiment extracted from financial reports provides additional predictive power beyond traditional market indicators.
+
+\section{Evaluation Metrics}
+
+In order to assess the predictive capabilities of the models, different evaluation metrics are used for the classification and regression tasks.
+
+\subsection{Classification Metric}
+
+For the classification task, the models predict one of three possible outcomes for the stock price movement:
+\textit{UP}, \textit{STAY} or \textit{DOWN}.
+
+Although accuracy is a commonly used metric for classification problems, it is not well suited for this task. The distribution of the three classes in the dataset is slightly imbalanced, meaning that some classes appear more frequently than others. In such situations, a model could achieve a deceptively high accuracy simply by favouring the majority class.
+
+To address this issue, the experiments use the macro-averaged F1 score. The F1 score represents the harmonic mean between precision and recall, providing a balanced measure of a model's ability to correctly identify each class.
+
+Precision and recall are defined as:
+
+\begin{equation}
+Precision = \frac{TP}{TP + FP}
+\end{equation}
+
+\begin{equation}
+Recall = \frac{TP}{TP + FN}
+\end{equation}
+
+where $TP$ represents true positives, $FP$ false positives and $FN$ false negatives.
+
+The F1 score is defined as:
+
+\begin{equation}
+F1 = 2 \cdot \frac{Precision \cdot Recall}{Precision + Recall}
+\end{equation}
+
+Since the problem involves three classes, the macro-average F1 score is used. This metric computes the F1 score independently for each class and then averages the results:
+
+\begin{equation}
+F1_{macro} = \frac{1}{K} \sum_{i=1}^{K} F1_i
+\end{equation}
+
+where $K$ represents the number of classes.
+
+The macro-average ensures that each class contributes equally to the final score, preventing the majority class from dominating the evaluation metric.
+
+\subsection{Regression Metric}
+
+For the regression task, the goal is to predict the numerical return of the stock price after a given time horizon.
+
+To evaluate regression performance, the Root Mean Squared Error (RMSE) is used. RMSE measures the square root of the average squared difference between predicted values and actual values.
+
+Formally, RMSE is defined as:
+
+\begin{equation}
+RMSE = \sqrt{\frac{1}{N} \sum_{i=1}^{N} (y_i - \hat{y}_i)^2}
+\end{equation}
+
+where:
+\begin{itemize}
+\item $y_i$ represents the true value,
+\item $\hat{y}_i$ represents the predicted value,
+\item $N$ is the total number of observations.
+\end{itemize}
+
+RMSE is particularly suitable for financial prediction tasks because it penalizes large prediction errors more heavily than small ones. This property is desirable when predicting stock returns, as large errors may correspond to significant misestimations of market movement.
+
+\section{Models}
+
+The experiments employ three widely used machine learning models that represent different modelling paradigms: linear models, ensemble bagging methods, and gradient boosting methods.
+
+\subsection{Logistic and Ridge Regression}
+
+Logistic regression is used for the classification task, while ridge regression is used for the regression task. Both models belong to the family of linear models.
+
+Linear models assume that the prediction can be expressed as a linear combination of the input features:
+
+\begin{equation}
+y = w_0 + \sum_{i=1}^{n} w_i x_i
+\end{equation}
+
+where $x_i$ are the input features and $w_i$ are the learned coefficients.
+
+Logistic regression models the probability of each class using the logistic function and predicts the class with the highest probability. Ridge regression, on the other hand, extends linear regression by introducing an $L_2$ regularization term that penalizes large coefficients:
+
+\begin{equation}
+L = \sum_{i=1}^{N} (y_i - \hat{y}_i)^2 + \lambda \sum_{j=1}^{n} w_j^2
+\end{equation}
+
+This regularization helps reduce overfitting, especially when dealing with correlated features.
+
+These models serve as simple and interpretable baselines that allow us to assess whether sentiment features provide additional predictive value even in relatively simple modelling frameworks.
+
+\subsection{Random Forests}
+
+Random Forest is an ensemble learning method based on decision trees. The model constructs a large number of decision trees during training and combines their predictions to produce the final output.
+
+Each tree is trained on a random subset of the training data using a technique known as bootstrap sampling. Additionally, at each split in the tree, a random subset of features is considered. This randomness helps reduce correlation between individual trees and improves the generalization capability of the ensemble.
+
+For classification tasks, the final prediction is obtained through majority voting among the trees. For regression tasks, the predictions of the trees are averaged.
+
+Random forests are well suited for this problem because they can model nonlinear relationships between features and outcomes, while also being relatively robust to noise and feature interactions.
+
+\subsection{XGBoost}
+
+XGBoost (Extreme Gradient Boosting) is a gradient boosting framework that builds an ensemble of decision trees sequentially. Unlike random forests, which build trees independently, gradient boosting constructs each new tree in order to correct the errors made by the previous trees.
+
+At each iteration, the algorithm fits a new tree to the residual errors of the current model. The final prediction is obtained by summing the contributions of all trees in the ensemble.
+
+XGBoost includes several improvements over traditional gradient boosting algorithms, such as regularization, efficient handling of sparse data and optimized parallel computation. These properties make it one of the most widely used algorithms for structured tabular datasets.
+
+Due to its ability to capture complex nonlinear relationships, XGBoost provides a strong benchmark for evaluating the usefulness of sentiment features in the prediction task.
+
+\section{Hyperparameter Search}
+
+Since the main objective of the experiments is not to obtain the best possible predictive model but rather to measure the impact of sentiment features, extensive hyperparameter tuning is not required.
+
+Furthermore, computational resources available for this project are limited. For these reasons, only a modest grid search over a small set of hyperparameters is performed for each model.
+
+This approach allows the models to reach a reasonable level of performance while keeping the computational cost manageable.
+
+\section{Baseline Models}
+
+In order to ensure that the evaluated models provide meaningful predictive power, their performance is compared against simple baseline predictors.
+
+For the classification task, the baseline model always predicts the majority class observed in the training dataset. This baseline represents the simplest possible classifier and provides a lower bound for model performance.
+
+For the regression task, the baseline model predicts the mean return observed in the training dataset for all observations. This corresponds to a constant predictor that ignores all input features.
+
+Comparing machine learning models against these baselines ensures that the learned models capture patterns that go beyond trivial statistical properties of the dataset.
