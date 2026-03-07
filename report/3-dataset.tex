@@ -336,6 +336,35 @@ This feature reflects the stability or volatility of expressed sentiment and may
 Together, these aggregated measures transform long-form financial disclosures into compact, economically interpretable sentiment features. 
 By combining domain-adapted language modeling with document-level aggregation, this approach preserves both contextual depth and cross-sectional comparability, providing structured inputs suitable for empirical analysis of short-term stock price reactions.
 
+\subsection*{Distribution of Sentiment Features}
+
+The results show that the predominant sentiment expressed in the reports is neutral. In particular, 
+the median filing exhibits a mean neutral sentiment score above $0.8$, indicating that most sentences 
+in financial disclosures are classified as neutral by the model. This observation is consistent with 
+the formal and informational tone typically used in financial reporting, where companies tend to 
+avoid strongly positive or negative language.
+
+The dispersion of the sentiment scores also reveals notable patterns. The standard deviation of the 
+neutral sentiment scores is often larger than that of the positive and negative scores, suggesting 
+that while neutral sentiment dominates overall, the degree of neutrality varies more substantially 
+across sentences within a filing. In practice, this implies that many reports contain a mixture of 
+neutral statements alongside smaller portions of more opinionated or sentiment-bearing language.
+
+Finally, the distribution of the polarity standard deviation exhibits two prominent regions, with 
+many filings having values close to $0$ and another concentration around approximately $0.4$. 
+Low polarity variability indicates filings in which the sentiment remains highly consistent 
+throughout the document, typically reflecting uniformly neutral language. In contrast, higher 
+polarity variability suggests documents where sentiment fluctuates more strongly across sections, 
+potentially reflecting the coexistence of positive and negative discussions, such as descriptions 
+of risks alongside favorable performance indicators.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{sec_filings_images/sentiment_scores_distributions.pdf}
+\caption{Distribution of the sentiment features extracted from financial filings using the FinBERT model.}
+\label{fig:sentiment_distribution}
+\end{figure}
+
 \section{Stock Price Data}
 
 Stock price data were obtained from \href{https://stooq.com/db/h/}{Stooq}, which provides historical daily price data for companies listed on the NYSE and NASDAQ. 
