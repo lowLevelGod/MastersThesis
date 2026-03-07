@@ -173,7 +173,7 @@ Three complementary statistical measures are reported:
     \item \textbf{Hypothesis tests}. Two paired statistical tests are applied to evaluate whether the mean difference is significantly different from zero: the paired Student's $t$-test and the Wilcoxon signed-rank test.
 \end{itemize}
 
-\subsubsection{Paired Student's $t$-test}
+\subsection{Paired Student's t-test}
 
 The paired Student's $t$-test evaluates whether the mean of the paired differences $\Delta_i$ is statistically different from zero. Formally, the null hypothesis is defined as
 
@@ -197,7 +197,7 @@ where $\bar{\Delta}$ is the sample mean of the differences, $s_\Delta$ is the sa
 
 The paired formulation is appropriate in this context because both model variants are evaluated on the same prediction tasks, ensuring that each pair of measurements is directly comparable.
 
-\subsubsection{Wilcoxon Signed-Rank Test}
+\subsection{Wilcoxon Signed-Rank Test}
 
 While the $t$-test assumes that the differences $\Delta_i$ are approximately normally distributed, this assumption may not always hold in practice, particularly when the number of observations is small. For this reason, the Wilcoxon signed-rank test is also applied as a non-parametric alternative.
 
@@ -327,13 +327,13 @@ The difference in predictive performance between these two configurations is den
 
 Statistical significance of the observed improvements is assessed across groups using two complementary tests: a paired Student's $t$-test and the Wilcoxon signed-rank test. Additionally, $95\%$ confidence intervals are computed for the mean $\Delta$ across groups. This approach allows us to determine whether sentiment features provide a consistent improvement across multiple sectors or industries, rather than only in isolated cases.
 
-\subsubsection{Statistical Significance of Sentiment Contribution}
+\subsection{Statistical Significance of Sentiment Contribution}
 
 In this case, the paired differences $\Delta_i$ correspond to the performance improvement obtained by adding sentiment features within each group across the horizons.
 For example, in the sector-level experiments each $\Delta_i$ represents the difference in predictive performance for a specific sector between the model with sentiment features and the corresponding model without them for a specific horizon. 
 The number of paired observations $n$ therefore equals the number of groups considered (e.g., sectors or industries) for a single horizon, while for all the horizons combined $n$ equals the product of the number of groups and the number of horizons.
 
-\subsubsection{Sector-Level Results}
+\subsection{Sector-Level Results}
 
 For the sector-level classification experiments, the impact of sentiment features varies depending on the underlying model. Logistic regression exhibits a modest but statistically significant improvement when sentiment information is incorporated. Averaged across all horizons, the mean improvement reaches $\Delta = 0.0056$ in macro F1 score, with a $95\%$ confidence interval of $(0.0016, 0.0097)$. Both the $t$-test ($p = 0.0238$) and the Wilcoxon test ($p = 0.0342$) indicate that the improvement is statistically significant. Interestingly, the strongest gains appear for longer horizons, particularly at the six-day prediction horizon.
 
@@ -398,7 +398,7 @@ Overall, the sector-level experiments suggest that sentiment features may contri
 \label{fig:sector_delta_distribution}
 \end{figure}
 
-\subsubsection{Industry-Level Results}
+\subsection{Industry-Level Results}
 
 The industry-level experiments provide a different perspective due to the larger number of groups (97 industries). In this setting, the logistic regression model demonstrates a clear and statistically significant improvement when sentiment features are included. The average performance gain across industries is $\Delta = 0.0112$, with a $95\%$ confidence interval of $(0.0071, 0.0152)$ and highly significant $p$-values for both the $t$-test and Wilcoxon test ($p < 10^{-5}$). Furthermore, improvements are observed consistently across most prediction horizons, suggesting that sentiment signals extracted from financial reports carry meaningful predictive information within industry-specific contexts.
 
@@ -461,7 +461,7 @@ The regression experiments at the industry level mirror the findings observed fo
 \label{fig:industry_delta_distribution}
 \end{figure}
 
-\subsubsection{Company-Level Results}
+\subsection{Company-Level Results}
 
 Finally, the company-level experiments explore the most granular modeling scenario. Because each model is trained using data from a single company, the available number of samples is considerably smaller. As a result, the estimates of $\Delta$ display substantially higher variability and wider confidence intervals.
 
@@ -525,7 +525,7 @@ These findings highlight the limitations of company-level modeling under data co
 \label{fig:company_delta_distribution}
 \end{figure}
 
-\subsubsection{Discussion}
+\subsection{Discussion}
 
 Taken together, the results of these experiments provide several important insights.
 
