@@ -508,28 +508,6 @@ def run_group_experiment(
                 append_row_to_csv(csv_path, row_dict)
 
         print(f"Finished {task} for {group_col} - Model: {model_name}")
-        
-
-# -------------------------
-# SECTOR TRAINING
-# -------------------------
-run_group_experiment(
-    df=df,
-    group_col="sector",
-    models_dict=classification_models,
-    task="classification",
-    min_samples=500,
-    results_prefix="group_results"
-)
-
-run_group_experiment(
-    df=df,
-    group_col="sector",
-    models_dict=regression_models,
-    task="regression",
-    min_samples=500,
-    results_prefix="group_results"
-)
 
 import os
 import pandas as pd
@@ -538,8 +516,29 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import ttest_1samp, wilcoxon
 
+def set_publication_style():
+    sns.set_theme(style="white")  # clean white background
+    
+    plt.rcParams.update({
+        "figure.figsize": (8, 5),
+        "figure.dpi": 300,
+        "savefig.dpi": 300,
+        "font.size": 12,
+        "axes.titlesize": 14,
+        "axes.labelsize": 12,
+        "xtick.labelsize": 11,
+        "ytick.labelsize": 11,
+        "legend.fontsize": 11,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.grid": False,
+        "pdf.fonttype": 42,   # editable text in Illustrator
+    })
+
 def analyze_group_results(group_col, task, models_dict):
 
+    set_publication_style()
+    
     for model_name in models_dict.keys():
 
         csv_path = f"group_results_{group_col}_{task}_{model_name}.csv"
@@ -591,15 +590,12 @@ def analyze_group_results(group_col, task, models_dict):
             else:
                 w_p = np.nan
 
-            cohens_d = mean_delta / std_delta if std_delta > 0 else np.nan
-
             print(f"\nHorizon {h} days")
             print(f"N groups: {n}")
             print(f"Mean Δ: {mean_delta:.6f}")
             print(f"95% CI: ({ci_low:.6f}, {ci_high:.6f})")
             print(f"T-test p-value: {p_val:.6f}")
             print(f"Wilcoxon p-value: {w_p}")
-            print(f"Cohen's d: {cohens_d:.4f}")
 
         # -------------------------------------------------------
         # 3️⃣ OVERALL EFFECT (AVERAGE PER GROUP FIRST)
@@ -631,14 +627,11 @@ def analyze_group_results(group_col, task, models_dict):
             else:
                 w_p = np.nan
 
-            cohens_d = mean_delta / std_delta if std_delta > 0 else np.nan
-
             print(f"N groups: {n}")
             print(f"Mean Δ (avg across horizons): {mean_delta:.6f}")
             print(f"95% CI: ({ci_low:.6f}, {ci_high:.6f})")
             print(f"T-test p-value: {p_val:.6f}")
             print(f"Wilcoxon p-value: {w_p}")
-            print(f"Cohen's d: {cohens_d:.4f}")
 
         # -------------------------------------------------------
         # 4️⃣ WHO BENEFITTED MOST?
@@ -683,16 +676,28 @@ def analyze_group_results(group_col, task, models_dict):
 
         print("Correlation between sample size and Δ:", round(corr, 4))
 
-        plt.scatter(merged["avg_samples"], merged["avg_delta"])
-        plt.xlabel("Average Samples")
-        plt.ylabel("Average Δ")
-        plt.title(f"{group_col}: Samples vs Sentiment Gain")
-        plt.tight_layout()
-        plt.savefig(f"{group_col}_{task}_samples_vs_avg_delta_{model_name}.pdf")
-        plt.close()
-
         print("\nAnalysis completed for:", model_name)
-        
+     
+# -------------------------
+# SECTOR TRAINING
+# -------------------------
+# run_group_experiment(
+#     df=df,
+#     group_col="sector",
+#     models_dict=classification_models,
+#     task="classification",
+#     min_samples=500,
+#     results_prefix="group_results"
+# )
+
+# run_group_experiment(
+#     df=df,
+#     group_col="sector",
+#     models_dict=regression_models,
+#     task="regression",
+#     min_samples=500,
+#     results_prefix="group_results"
+# )   
 
 # -------------------------
 # INDUSTRY TRAINING
@@ -736,11 +741,11 @@ def analyze_group_results(group_col, task, models_dict):
 #     results_prefix="group_results"
 # )
         
-# analyze_group_results("sector", "classification", classification_models)
-# analyze_group_results("sector", "regression", regression_models)
+analyze_group_results("sector", "classification", classification_models)
+analyze_group_results("sector", "regression", regression_models)
 
-# analyze_group_results("industry", "classification", classification_models)
-# analyze_group_results("industry", "regression", regression_models)
+analyze_group_results("industry", "classification", classification_models)
+analyze_group_results("industry", "regression", regression_models)
 
-# analyze_group_results("ticker", "classification", classification_models)
-# analyze_group_results("ticker", "regression", regression_models)
+analyze_group_results("ticker", "classification", classification_models)
+analyze_group_results("ticker", "regression", regression_models)

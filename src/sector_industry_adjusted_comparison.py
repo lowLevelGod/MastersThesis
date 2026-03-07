@@ -524,8 +524,28 @@ def run_full_dataset_experiment(
 
 from scipy.stats import ttest_1samp, wilcoxon
 
-def analyze_full_results(task, models_dict):
+def set_publication_style():
+    sns.set_theme(style="white")  # clean white background
+    
+    plt.rcParams.update({
+        "figure.figsize": (8, 5),
+        "figure.dpi": 300,
+        "savefig.dpi": 300,
+        "font.size": 12,
+        "axes.titlesize": 14,
+        "axes.labelsize": 12,
+        "xtick.labelsize": 11,
+        "ytick.labelsize": 11,
+        "legend.fontsize": 11,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.grid": False,
+        "pdf.fonttype": 42,   # editable text in Illustrator
+    })
 
+def analyze_full_results(task, models_dict):
+    set_publication_style()
+    
     label_types = ["raw", "sector_adj", "industry_adj"]
 
     for model_name in models_dict.keys():
@@ -597,15 +617,12 @@ def analyze_full_results(task, models_dict):
             except:
                 w_p = np.nan
 
-            cohens_d = mean_delta / std_delta if std_delta > 0 else np.nan
-
             print(f"\nLabel type: {label_type}")
             print(f"N horizons: {n}")
             print(f"Mean Δ: {mean_delta:.6f}")
             print(f"95% CI: ({ci_low:.6f}, {ci_high:.6f})")
             print(f"T-test p-value: {p_val:.6f}")
             print(f"Wilcoxon p-value: {w_p}")
-            print(f"Cohen's d: {cohens_d:.4f}")
 
         # =====================================================
         # 3️⃣ Baseline Comparison (Model vs Naive)
@@ -657,5 +674,5 @@ def analyze_full_results(task, models_dict):
 
         print("\nAnalysis completed for:", model_name)
         
-# analyze_full_results("classification", classification_models)
-# analyze_full_results("regression", regression_models)
+analyze_full_results("classification", classification_models)
+analyze_full_results("regression", regression_models)
