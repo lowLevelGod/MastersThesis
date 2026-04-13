@@ -1,0 +1,34 @@
+\chapter{Evaluation}
+\label{appendix:evaluation}
+
+\section{Paired Student's t-test}
+
+The paired Student's $t$-test evaluates whether the mean of the paired differences $\Delta_i$ is statistically different from zero. Formally, the null hypothesis is defined as
+
+\[
+H_0 : \mathbb{E}[\Delta] = 0
+\]
+
+which states that the inclusion of sentiment features has no effect on predictive performance. The alternative hypothesis is
+
+\[
+H_1 : \mathbb{E}[\Delta] \neq 0 .
+\]
+
+The test statistic is computed as
+
+\[
+t = \frac{\bar{\Delta}}{s_\Delta / \sqrt{n}},
+\]
+
+where $\bar{\Delta}$ is the sample mean of the differences, $s_\Delta$ is the sample standard deviation of the differences, and $n$ is the number of paired observations. The resulting statistic is compared to a $t$-distribution with $n-1$ degrees of freedom to obtain a $p$-value.
+
+The paired formulation is appropriate in this context because both model variants are evaluated on the same prediction tasks, ensuring that each pair of measurements is directly comparable.
+
+\section{Wilcoxon Signed-Rank Test}
+
+While the $t$-test assumes that the differences $\Delta_i$ are approximately normally distributed, this assumption may not always hold in practice, particularly when the number of observations is small. For this reason, the Wilcoxon signed-rank test is also applied as a non-parametric alternative.
+
+The Wilcoxon test evaluates whether the median of the paired differences is significantly different from zero. Instead of relying on the raw values of $\Delta_i$, the test ranks the absolute values of the differences and analyzes the sum of the ranks associated with positive and negative signs. This procedure makes the test robust to deviations from normality and to the presence of outliers.
+
+Using both the paired $t$-test and the Wilcoxon test provides a more reliable assessment of statistical significance, since the two tests rely on different assumptions about the underlying distribution of the performance differences.

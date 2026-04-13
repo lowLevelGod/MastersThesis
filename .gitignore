@@ -214,3 +214,13 @@ report/output/
 *.parquet
 sec_submissions/
 finbert_chunk_cache/
+
+# Latex
+*.aux
+*.toc
+*.blg
+*.bbl
+*.out
+*.bcf
+*.run.xml
+*.synctex.gz

@@ -1,0 +1,91 @@
+\chapter{Models}
+\label{appendix:models}
+
+\section{Logistic and Ridge Regression}
+
+Logistic regression is used for the classification task, while ridge regression is used for the regression task. Both models belong to the family of linear models.
+
+Linear models assume that the prediction can be expressed as a linear combination of the input features:
+
+\begin{equation}
+y = w_0 + \sum_{i=1}^{n} w_i x_i
+\end{equation}
+
+where $x_i$ are the input features and $w_i$ are the learned coefficients.
+
+Logistic regression models the probability of each class using the logistic function and predicts the class with the highest probability. Ridge regression, on the other hand, extends linear regression by introducing an $L_2$ regularization term that penalizes large coefficients:
+
+\begin{equation}
+L = \sum_{i=1}^{N} (y_i - \hat{y}_i)^2 + \lambda \sum_{j=1}^{n} w_j^2
+\end{equation}
+
+This regularization helps reduce overfitting, especially when dealing with correlated features.
+
+These models serve as simple and interpretable baselines that allow us to assess whether sentiment features provide additional predictive value even in relatively simple modelling frameworks.
+
+\section{Random Forests}
+
+Random Forest is an ensemble learning method based on decision trees. The model constructs a large number of decision trees during training and combines their predictions to produce the final output.
+
+Each tree is trained on a random subset of the training data using a technique known as bootstrap sampling. Additionally, at each split in the tree, a random subset of features is considered. This randomness helps reduce correlation between individual trees and improves the generalization capability of the ensemble.
+
+For classification tasks, the final prediction is obtained through majority voting among the trees. For regression tasks, the predictions of the trees are averaged.
+
+Random forests are well suited for this problem because they can model nonlinear relationships between features and outcomes, while also being relatively robust to noise and feature interactions.
+
+\section{XGBoost}
+
+XGBoost (Extreme Gradient Boosting) is a gradient boosting framework that builds an ensemble of decision trees sequentially. Unlike random forests, which build trees independently, gradient boosting constructs each new tree in order to correct the errors made by the previous trees.
+
+At each iteration, the algorithm fits a new tree to the residual errors of the current model. The final prediction is obtained by summing the contributions of all trees in the ensemble.
+
+XGBoost includes several improvements over traditional gradient boosting algorithms, such as regularization, efficient handling of sparse data and optimized parallel computation. These properties make it one of the most widely used algorithms for structured tabular datasets.
+
+Due to its ability to capture complex nonlinear relationships, XGBoost provides a strong benchmark for evaluating the usefulness of sentiment features in the prediction task.
+
+\section{Long Short-Term Memory (LSTM)}
+
+Long Short-Term Memory (LSTM)\cite{lstm1997} networks are a specialized type of recurrent neural network designed to capture temporal dependencies in sequential data. Unlike traditional recurrent architectures, LSTMs address the vanishing and exploding gradient problems through the introduction of gated memory cells. Each LSTM cell contains an input gate, forget gate, and output gate, which regulate the flow of information through time. This structure allows the model to selectively retain or discard historical information, enabling it to learn both short-term and long-term dependencies within time series.
+
+Formally, given an input sequence $\{x_t\}_{t=1}^{T}$, the LSTM updates its internal state using gated operations:
+
+\begin{align}
+f_t &= \sigma(W_f x_t + U_f h_{t-1} + b_f) \\
+i_t &= \sigma(W_i x_t + U_i h_{t-1} + b_i) \\
+\tilde{c}_t &= \tanh(W_c x_t + U_c h_{t-1} + b_c) \\
+c_t &= f_t \odot c_{t-1} + i_t \odot \tilde{c}_t \\
+o_t &= \sigma(W_o x_t + U_o h_{t-1} + b_o) \\
+h_t &= o_t \odot \tanh(c_t)
+\end{align}
+
+where $f_t$, $i_t$, and $o_t$ denote the forget, input, and output gates respectively, $c_t$ is the cell state, and $h_t$ is the hidden representation passed to subsequent time steps.
+
+LSTM networks are particularly suitable for financial time-series modeling, where dependencies between events may span multiple days or filings. In the context of this work, each input sequence corresponds to a temporal window of company filings enriched with sentiment features. The LSTM architecture can capture how sentiment evolves across consecutive disclosures and how past filings influence future price movements. This is especially relevant for stock prediction tasks, where market reactions to information may unfold gradually rather than instantaneously. By maintaining a memory of previous filings, the LSTM model can identify temporal sentiment trends that improve directional prediction performance.
+
+\section{Patch Time Series Transformer (PatchTST)}
+
+Patch Time Series Transformer (PatchTST)\cite{nie2023timeseriesworth64} is a transformer-based architecture specifically designed for multivariate time-series forecasting. Unlike traditional transformers that process individual time steps, PatchTST divides the input sequence into non-overlapping patches, which are then embedded and processed using self-attention mechanisms. This patch-based representation reduces sequence length while preserving local temporal structure, improving computational efficiency and stability.
+
+Given an input time series $X \in \mathbb{R}^{T \times F}$, where $T$ is the sequence length and $F$ is the number of features, PatchTST first partitions the sequence into patches of length $P$:
+
+\begin{equation}
+X \rightarrow \{X_1, X_2, \ldots, X_{T/P}\}, \quad X_i \in \mathbb{R}^{P \times F}
+\end{equation}
+
+Each patch is flattened and projected into a latent representation:
+
+\begin{equation}
+z_i = W \cdot \text{Flatten}(X_i) + b
+\end{equation}
+
+The resulting patch embeddings are then processed using transformer encoder layers with multi-head self-attention:
+
+\begin{equation}
+Z' = \text{TransformerEncoder}(Z)
+\end{equation}
+
+Finally, a pooling operation aggregates information across patches, and a fully connected layer produces the prediction output.
+
+The PatchTST architecture is particularly relevant for stock prediction tasks involving financial filings. Financial disclosures often contain bursts of information occurring at irregular intervals, and market reactions may depend on patterns spanning multiple filings. By grouping consecutive filings into patches, PatchTST captures local temporal sentiment patterns while simultaneously modeling long-range dependencies through self-attention. This allows the model to learn relationships between distant filings without the sequential bottleneck present in recurrent networks.
+
+Furthermore, the attention mechanism enables the model to dynamically weight the importance of different filings within a sequence. This is beneficial in financial markets, where certain disclosures, such as earnings announcements or material events, may carry more predictive information than routine filings. The ability of PatchTST to model global dependencies and emphasize informative segments makes it well-suited for capturing complex temporal sentiment dynamics in stock return prediction.

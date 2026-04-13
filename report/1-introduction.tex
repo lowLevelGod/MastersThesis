@@ -9,13 +9,13 @@ Understanding the short-term effect of financial reports on stock price movement
 \section{Earnings Announcements as Information Events}
 
 The informational role of earnings announcements has been documented for more than five decades. 
-In their seminal study, Ray Ball and Philip Brown (1968)\cite{an-empirical-evaluation-of-accounting-income-numbers} provide early empirical evidence that accounting earnings convey value-relevant information that is rapidly incorporated into stock prices. 
+In their seminal study, Ray Ball and Philip Brown\cite{an-empirical-evaluation-of-accounting-income-numbers} provide early empirical evidence that accounting earnings convey value-relevant information that is rapidly incorporated into stock prices. 
 Their findings established the foundation for capital markets research in accounting and demonstrated that financial disclosures are not merely regulatory formalities but economically meaningful signals.
 
 Subsequent literature has consistently shown that earnings announcements are associated with abnormal returns, elevated volatility, and abnormal trading volume. 
-For example, Beaver (1968)\cite{information-content-of-annual-earnings-announcements} documents significant increases in trading activity around earnings releases, indicating that new information is actively processed by market participants. 
+For example, Beaver\cite{information-content-of-annual-earnings-announcements} documents significant increases in trading activity around earnings releases, indicating that new information is actively processed by market participants. 
 Later research identifies systematic return patterns following earnings surprises. 
-Notably, Victor Bernard and Jacob Thomas (1989)\cite{pead} document post-earnings announcement drift (PEAD), showing that stock prices continue to drift in the direction of earnings surprises for weeks after the announcement. 
+Notably, Victor Bernard and Jacob Thomas\cite{pead} document post-earnings announcement drift (PEAD), showing that stock prices continue to drift in the direction of earnings surprises for weeks after the announcement. 
 This phenomenon suggests that price adjustment to earnings information may be gradual rather than instantaneous.
 
 More recent research continues to confirm the persistence of announcement-related anomalies, highlighting the ongoing relevance of earnings-based predictability (e.g., Livnat \& Mendenhall, 2006\cite{compare-pead-analysts-vs-time-series}). 
@@ -23,12 +23,12 @@ The magnitude and consistency of these findings explain why institutional invest
 
 \section{The Efficient Market Hypothesis and Informational Efficiency}
 
-The theoretical benchmark for evaluating price reactions to financial reports is the Efficient Market Hypothesis (EMH), formalized by Eugene Fama (1970)\cite{efficient-capital-markets}. 
+The theoretical benchmark for evaluating price reactions to financial reports is the Efficient Market Hypothesis (EMH), formalized by Eugene Fama\cite{efficient-capital-markets}. 
 Under the semi-strong form of the EMH, publicly available information, such as financial statements, should be immediately and fully reflected in stock prices. 
 If markets are semi-strong efficient, systematic short-term predictability following earnings announcements should not persist.
 
 However, empirical evidence of underreaction, post-announcement drift, and earnings momentum challenges the strictest interpretation of semi-strong efficiency. 
-Fama (1998)\cite{market-efficiency-long-term-returns} acknowledges that anomalies exist but argues that many may be artifacts of data-snooping or model misspecification. 
+Fama\cite{market-efficiency-long-term-returns} acknowledges that anomalies exist but argues that many may be artifacts of data-snooping or model misspecification. 
 Nonetheless, the persistence of earnings-related predictability across time periods and markets suggests that informational frictions, behavioral biases, or limits to arbitrage may prevent instantaneous price adjustment.
 
 From a machine learning perspective, this debate is particularly important. If markets are perfectly efficient, predictive models using publicly available earnings information should not systematically outperform chance. 
@@ -40,8 +40,8 @@ Financial reports are complex, high-dimensional documents containing both struct
 Processing this information requires cognitive effort and domain expertise. 
 Behavioral finance research suggests that investors may exhibit limited attention and underreaction when confronted with complex disclosures.
 
-For instance, Hirshleifer and Teoh (2003)\cite{limited-attention-information-disclosure} argue that investor inattention contributes to post-announcement drift. 
-Similarly, Barberis, Shleifer, and Vishny (1998)\cite{model-of-investor-sentiment} develop a model of investor underreaction and overreaction driven by behavioral biases. 
+For instance, Hirshleifer and Teoh\cite{limited-attention-information-disclosure} argue that investor inattention contributes to post-announcement drift. 
+Similarly, Barberis, Shleifer, and Vishny\cite{model-of-investor-sentiment} develop a model of investor underreaction and overreaction driven by behavioral biases. 
 These theoretical and empirical findings imply that information processing is not frictionless, creating the possibility of short-term predictability around disclosure events.
 
 Moreover, market participants are heterogeneous. 
@@ -57,8 +57,8 @@ Empirical asset pricing research demonstrates that earnings surprises, defined a
 This suggests that numerical market data alone may be insufficient to explain short-term price adjustments following disclosures. Instead, models that incorporate financial report information may capture incremental predictive content beyond past prices.
 
 Recent advances in machine learning and natural language processing have further emphasized the informational richness of financial text. 
-For example, Loughran and Tim McDonald (2011)\cite{textual-analysis-dictionaries-and-10ks} develop domain-specific financial sentiment dictionaries, demonstrating that textual tone in corporate filings contains economically meaningful information. 
-Similarly, Gu, Kelly, and Xiu (2020)\cite{empirical-asset-pricing-via-machine-learning} show that machine learning methods can extract predictive signals from large financial datasets, reshaping modern empirical asset pricing.
+For example, Loughran and Tim McDonald\cite{textual-analysis-dictionaries-and-10ks} develop domain-specific financial sentiment dictionaries, demonstrating that textual tone in corporate filings contains economically meaningful information. 
+Similarly, Gu, Kelly, and Xiu\cite{empirical-asset-pricing-via-machine-learning} show that machine learning methods can extract predictive signals from large financial datasets, reshaping modern empirical asset pricing.
 
 These developments underscore the importance of integrating structured financial data and unstructured disclosure information within predictive frameworks.
 
@@ -74,24 +74,24 @@ Thus, studying the short-term market impact of financial reports is not merely a
 
 The intersection of machine learning and financial text analysis has evolved substantially over the past two decades. Early approaches relied on classical bag-of-words representations and linear models, while more recent work leverages deep neural networks and transformer-based architectures. In parallel, advances in representation learning have enabled increasingly sophisticated modeling of long-form financial documents such as SEC filings. This chapter reviews the most relevant strands of machine learning research related to stock price prediction using textual and market data, with particular emphasis on deep learning and domain-adapted language models.
 
-One of the foundational works in text-based stock prediction by Tetlock (2007)\cite{tetlock2007giving} examined whether the tone of media content predicts market movements. Although not a deep learning paper, this work demonstrated that linguistic sentiment extracted from textual data contains economically meaningful signals. Textual tone was measured using dictionary-based methods, and regressions were used to link media pessimism to market returns. The key contribution was to empirically establish that textual sentiment correlates with short-term market behavior.
+One of the foundational works in text-based stock prediction by Tetlock\cite{tetlock2007giving} examined whether the tone of media content predicts market movements. Although not a deep learning paper, this work demonstrated that linguistic sentiment extracted from textual data contains economically meaningful signals. Textual tone was measured using dictionary-based methods, and regressions were used to link media pessimism to market returns. The key contribution was to empirically establish that textual sentiment correlates with short-term market behavior.
 
-Subsequent research began incorporating supervised machine learning techniques. Schumaker et al. (2009)\cite{schumaker2009textual} applied support vector machines and naive Bayes classifiers to financial news articles, demonstrating that textual features could improve short-term stock direction prediction. Their objective was to classify whether a stock would increase or decrease following news releases. Using engineered linguistic features and classification algorithms, they reported predictive accuracy exceeding naive baselines, suggesting that machine learning could capture nonlinear relationships between text and returns.
+Subsequent research began incorporating supervised machine learning techniques. Schumaker et al.\cite{schumaker2009textual} applied support vector machines and naive Bayes classifiers to financial news articles, demonstrating that textual features could improve short-term stock direction prediction. Their objective was to classify whether a stock would increase or decrease following news releases. Using engineered linguistic features and classification algorithms, they reported predictive accuracy exceeding naive baselines, suggesting that machine learning could capture nonlinear relationships between text and returns.
 
 These early works relied heavily on manually curated lexicons or shallow feature representations such as TF-IDF vectors. While effective to a certain degree, such representations fail to capture contextual semantics and long-range dependencies present in financial reports.
 
 
-The introduction of deep learning marked a turning point in financial text modeling. Ding et al. (2015)\cite{ding2015deep} proposed a deep neural network framework that combined event embeddings derived from news headlines with temporal price modeling. Their model used a convolutional neural network (CNN) to encode event representations and incorporated historical price information. The objective was to predict stock price movements following news events. They demonstrated that deep representations significantly outperformed traditional bag-of-words approaches.
+The introduction of deep learning marked a turning point in financial text modeling. Ding et al.\cite{ding2015deep} proposed a deep neural network framework that combined event embeddings derived from news headlines with temporal price modeling. Their model used a convolutional neural network (CNN) to encode event representations and incorporated historical price information. The objective was to predict stock price movements following news events. They demonstrated that deep representations significantly outperformed traditional bag-of-words approaches.
 
-Similarly, Hu et al. (2018)\cite{hu2018listening} introduced a hierarchical attention network for modeling financial news and predicting stock volatility and direction. By applying attention mechanisms, the model could weight more informative sentences more heavily, thereby improving interpretability and performance. This work highlighted the importance of document-level structure in financial text modeling.
+Similarly, Hu et al.\cite{hu2018listening} introduced a hierarchical attention network for modeling financial news and predicting stock volatility and direction. By applying attention mechanisms, the model could weight more informative sentences more heavily, thereby improving interpretability and performance. This work highlighted the importance of document-level structure in financial text modeling.
 
-Parallel to developments in text modeling, recurrent neural networks (RNNs), particularly long short-term memory (LSTM) networks, were widely applied to time-series financial forecasting. Fischer et al. (2018)\cite{fischer2018deep} demonstrated that LSTMs outperform traditional autoregressive models for stock return prediction using price-based features. Although their work focused primarily on numerical time-series data rather than textual inputs, it established deep learning as a competitive alternative to classical econometric methods.
+Parallel to developments in text modeling, recurrent neural networks (RNNs), particularly long short-term memory (LSTM) networks, were widely applied to time-series financial forecasting. Fischer et al.\cite{fischer2018deep} demonstrated that LSTMs outperform traditional autoregressive models for stock return prediction using price-based features. Although their work focused primarily on numerical time-series data rather than textual inputs, it established deep learning as a competitive alternative to classical econometric methods.
 
 These contributions collectively show that neural architectures can effectively capture nonlinear patterns in financial data. However, many of these models were applied to relatively short textual inputs, such as headlines or summaries, rather than full-length regulatory filings.
 
-The development of transformer architectures (2017)\cite{vaswani2017attention} and the introduction of BERT (2019)\cite{devlin2019bertpretrainingdeepbidirectional} revolutionized natural language processing. BERT's bidirectional self-attention mechanism enables contextual word representations, allowing models to capture nuanced semantics and long-range dependencies. This was particularly relevant for financial text, which is formal, domain-specific, and context-dependent.
+The development of transformer architectures\cite{vaswani2017attention} and the introduction of BERT\cite{devlin2019bertpretrainingdeepbidirectional} revolutionized natural language processing. BERT's bidirectional self-attention mechanism enables contextual word representations, allowing models to capture nuanced semantics and long-range dependencies. This was particularly relevant for financial text, which is formal, domain-specific, and context-dependent.
 
-Recognizing that general-purpose language models may not optimally capture financial terminology, researchers began developing domain-adapted transformer models. One of the most influential contributions is FinBERT (2020)\cite{yang2020finbert}, which fine-tunes BERT on financial corpora, including SEC filings and financial news. The objective of FinBERT was to improve sentiment classification accuracy in financial contexts. Empirical results showed that domain adaptation significantly improves performance compared to general BERT models when applied to financial sentiment tasks.
+Recognizing that general-purpose language models may not optimally capture financial terminology, researchers began developing domain-adapted transformer models. One of the most influential contributions is FinBERT\cite{yang2020finbert}, which fine-tunes BERT on financial corpora, including SEC filings and financial news. The objective of FinBERT was to improve sentiment classification accuracy in financial contexts. Empirical results showed that domain adaptation significantly improves performance compared to general BERT models when applied to financial sentiment tasks.
 
 The existing literature demonstrates several key trends: (i) the transition from lexicon-based sentiment analysis to deep contextual embeddings, (ii) the growing importance of domain-specific language models, and (iii) the integration of textual and structured financial data within multimodal frameworks.
 

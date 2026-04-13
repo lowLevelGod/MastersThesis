@@ -81,69 +81,100 @@ where:
 
 RMSE is particularly suitable for financial prediction tasks because it penalizes large prediction errors more heavily than small ones. This property is desirable when predicting stock returns, as large errors may correspond to significant misestimations of market movement.
 
+\section{Sentiment Extraction}
+
+Following section extraction and cleaning, the textual data consisted of the concatenated MD\&A and Quantitative and Qualitative Disclosures About Market Risk sections for each filing. 
+In practice, the market risk section was missing in a substantial portion of the 10-Q filings and in some 10-K filings (see Appendix \ref{appendix:missing_sections}), as disclosure requirements may vary depending on firm characteristics and reporting thresholds. 
+To maintain consistency across observations and avoid discarding otherwise informative samples, the extracted sections were concatenated into a single document per filing and processed jointly. 
+This approach ensures that all available narrative information is utilized while preserving comparability across firms and time.
+
+Because the objective of the study is to examine the short-term stock price impact of financial reports, particular emphasis was placed on capturing the sentiment embedded in managerial guidance and forward-looking statements. 
+Prior literature suggests that tone and linguistic framing in corporate disclosures influence investor perception and subsequent returns. 
+Consequently, sentiment was treated as a central textual feature.
+
+\subsection*{BERT and FinBERT}
+
+To extract sentiment from the textual disclosures, this study employs FinBERT\cite{yang2020finbert}, a domain-adapted transformer-based language model derived from BERT.
+
+BERT (Bidirectional Encoder Representations from Transformers), introduced by Jacob Devlin et al.\cite{devlin2019bertpretrainingdeepbidirectional}, is based on the transformer architecture proposed by Ashish Vaswani et al.\cite{vaswani2017attention}. 
+Unlike earlier sequential language models, BERT uses bidirectional self-attention mechanisms, allowing it to condition each word on both its left and right context simultaneously. 
+This architecture enables deep contextual understanding of language and has become foundational in modern natural language processing.
+
+However, general-purpose BERT models are trained on corpora such as Wikipedia and BooksCorpus, which do not reflect the specialized vocabulary and linguistic conventions of financial reporting. 
+Financial text exhibits domain-specific terminology, formal structure, and nuanced expressions of uncertainty and risk that differ substantially from general language usage.
+
+To address this limitation, FinBERT was developed as a version of BERT fine-tuned on financial corpora, including SEC filings and financial news. 
+FinBERT is specifically optimized for financial sentiment classification, distinguishing between positive, negative, and neutral tone in financial contexts. 
+Its training on SEC filings makes it particularly well-suited for analyzing MD\&A and related disclosure sections, as it captures the semantics and tone patterns characteristic of regulatory financial reporting.
+
+Importantly, only the textual narrative sections extracted from the filings were used as input to FinBERT. 
+Residual numerical fragments, table artifacts, and non-linguistic content were removed during preprocessing, ensuring that sentiment scores reflect meaningful narrative disclosures rather than structural noise.
+
+\subsection*{Handling the 512-Token Limitation}
+
+A key architectural constraint of BERT-based models is the maximum input length of 512 tokens. 
+This limitation arises because the self-attention mechanism scales quadratically with sequence length in both memory and computation. 
+To maintain tractability during pretraining and inference, BERT was designed with a fixed maximum positional embedding size of 512 tokens. 
+Sequences exceeding this limit must therefore be truncated or segmented.
+
+The extracted MD\&A and market risk sections frequently exceeded this limit by a substantial margin, often containing tens of thousands of tokens. 
+Truncating the text to the first 512 tokens would discard potentially informative content, particularly forward-looking statements that may appear later in the section. 
+Therefore, a strategy was required to approximate document-level sentiment while respecting the architectural constraint.
+
+To address this issue, each document was divided into candidate chunks, from which a fixed number of segments were randomly sampled. 
+Specifically, 48 chunks were sampled per document. 
+This number was chosen based on the average character length of the filings in the dataset and computational considerations. 
+It provides broad coverage of the document's content while maintaining feasible inference time given the scale of the dataset.
+
+Each chunk was limited to 384 tokens. 
+This length was selected to ensure that, after accounting for special tokens (e.g., [CLS], [SEP]) and potential padding required for batch processing, the total sequence length would not exceed the 512-token maximum. 
+Using 384 tokens strikes a balance between contextual richness and computational safety, minimizing the risk of truncation while preserving meaningful semantic structure within each chunk.
+
+Random sampling, rather than fixed sequential splitting, was adopted to avoid systematic bias toward specific portions of the document (e.g., only introductory or concluding paragraphs). 
+Higher weight was given to chunks in the middle of the document, since the beginning and the end of the sections often contained boilerplate language or summary statements 
+that may be less informative for sentiment analysis.
+Over 48 sampled chunks, the method provides a distributed approximation of the document's overall tone.
+
+\subsection*{Aggregation of Sentiment Scores}
+
+FinBERT produces, for each chunk, probability scores for three sentiment categories: positive, negative, and neutral (see Appendix \ref{appendix:sentiment_features} for statistics). 
+To obtain document-level features representing the entire filing, these chunk-level outputs were aggregated.
+
+For each filing, the following features were computed:
+\begin{itemize}
+    \item The mean positive, negative, and neutral scores across the 48 chunks.
+	\item The standard deviation of the positive, negative, and neutral scores across chunks.
+    \item The standard deviation of the polarity score, defined as the difference between positive and negative probabilities.
+\end{itemize}
+
+The mean sentiment scores provide an estimate of the overall tone of the disclosure, capturing whether the document is predominantly optimistic, pessimistic, or neutral in its language. 
+This aligns directly with the study's objective of assessing how managerial tone influences short-term market reactions.
+
+The standard deviations capture intra-document variability in tone. 
+Financial reports may contain mixed signals, for example, strong performance in one segment and risk warnings in another. 
+A high standard deviation in sentiment scores indicates heterogeneous tone across sections, which may reflect uncertainty, complexity, or conflicting information. 
+Such variation may influence how investors interpret and price the disclosure.
+
+Finally, the standard deviation of the polarity measure captures fluctuations in the balance between positive and negative language across the document. 
+This feature reflects the stability or volatility of expressed sentiment and may proxy for narrative inconsistency or nuanced communication strategies.
+
 \section{Models}
 
 The experiments employ three widely used machine learning models that represent different modelling paradigms: linear models, ensemble bagging methods, and gradient boosting methods.
-
-\subsection{Logistic and Ridge Regression}
-
-Logistic regression is used for the classification task, while ridge regression is used for the regression task. Both models belong to the family of linear models.
-
-Linear models assume that the prediction can be expressed as a linear combination of the input features:
-
-\begin{equation}
-y = w_0 + \sum_{i=1}^{n} w_i x_i
-\end{equation}
-
-where $x_i$ are the input features and $w_i$ are the learned coefficients.
-
-Logistic regression models the probability of each class using the logistic function and predicts the class with the highest probability. Ridge regression, on the other hand, extends linear regression by introducing an $L_2$ regularization term that penalizes large coefficients:
-
-\begin{equation}
-L = \sum_{i=1}^{N} (y_i - \hat{y}_i)^2 + \lambda \sum_{j=1}^{n} w_j^2
-\end{equation}
-
-This regularization helps reduce overfitting, especially when dealing with correlated features.
-
-These models serve as simple and interpretable baselines that allow us to assess whether sentiment features provide additional predictive value even in relatively simple modelling frameworks.
-
-\subsection{Random Forests}
-
-Random Forest is an ensemble learning method based on decision trees. The model constructs a large number of decision trees during training and combines their predictions to produce the final output.
-
-Each tree is trained on a random subset of the training data using a technique known as bootstrap sampling. Additionally, at each split in the tree, a random subset of features is considered. This randomness helps reduce correlation between individual trees and improves the generalization capability of the ensemble.
-
-For classification tasks, the final prediction is obtained through majority voting among the trees. For regression tasks, the predictions of the trees are averaged.
-
-Random forests are well suited for this problem because they can model nonlinear relationships between features and outcomes, while also being relatively robust to noise and feature interactions.
-
-\subsection{XGBoost}
-
-XGBoost (Extreme Gradient Boosting) is a gradient boosting framework that builds an ensemble of decision trees sequentially. Unlike random forests, which build trees independently, gradient boosting constructs each new tree in order to correct the errors made by the previous trees.
-
-At each iteration, the algorithm fits a new tree to the residual errors of the current model. The final prediction is obtained by summing the contributions of all trees in the ensemble.
-
-XGBoost includes several improvements over traditional gradient boosting algorithms, such as regularization, efficient handling of sparse data and optimized parallel computation. These properties make it one of the most widely used algorithms for structured tabular datasets.
-
-Due to its ability to capture complex nonlinear relationships, XGBoost provides a strong benchmark for evaluating the usefulness of sentiment features in the prediction task.
-
-\section{Hyperparameter Search}
+In addition, 2 time series models are also considered for comparison: LSTM and PatchTST (see Appendix \ref{appendix:models}).
 
 Since the main objective of the experiments is not to obtain the best possible predictive model but rather to measure the impact of sentiment features, extensive hyperparameter tuning is not required.
-
 Furthermore, computational resources available for this project are limited. For these reasons, only a modest grid search over a small set of hyperparameters is performed for each model.
-
 This approach allows the models to reach a reasonable level of performance while keeping the computational cost manageable.
 
-\section{Baseline Models}
+\subsection{Baseline Models}
 
 In order to ensure that the evaluated models provide meaningful predictive power, their performance is compared against simple baseline predictors.
+Comparing machine learning models against these baselines ensures that the learned models capture patterns that go beyond trivial statistical properties of the dataset.
 
 For the classification task, the baseline model always predicts the majority class observed in the training dataset. This baseline represents the simplest possible classifier and provides a lower bound for model performance.
 
 For the regression task, the baseline model predicts the mean return observed in the training dataset for all observations. This corresponds to a constant predictor that ignores all input features.
-
-Comparing machine learning models against these baselines ensures that the learned models capture patterns that go beyond trivial statistical properties of the dataset.
 
 \section{Data Splitting Strategy}
 
@@ -170,40 +201,8 @@ Three complementary statistical measures are reported:
     
     \item \textbf{Confidence intervals}. A $95\%$ confidence interval for $\bar{\Delta}$ is computed in order to quantify the uncertainty associated with the estimated mean improvement. If the confidence interval does not include zero, this suggests that the effect is unlikely to be due to random fluctuations.
     
-    \item \textbf{Hypothesis tests}. Two paired statistical tests are applied to evaluate whether the mean difference is significantly different from zero: the paired Student's $t$-test and the Wilcoxon signed-rank test.
+    \item \textbf{Hypothesis tests}. Two paired statistical tests are applied to evaluate whether the mean difference is significantly different from zero: the paired Student's $t$-test and the Wilcoxon signed-rank test (see Appendix \ref{appendix:evaluation}).
 \end{itemize}
-
-\subsection{Paired Student's t-test}
-
-The paired Student's $t$-test evaluates whether the mean of the paired differences $\Delta_i$ is statistically different from zero. Formally, the null hypothesis is defined as
-
-\[
-H_0 : \mathbb{E}[\Delta] = 0
-\]
-
-which states that the inclusion of sentiment features has no effect on predictive performance. The alternative hypothesis is
-
-\[
-H_1 : \mathbb{E}[\Delta] \neq 0 .
-\]
-
-The test statistic is computed as
-
-\[
-t = \frac{\bar{\Delta}}{s_\Delta / \sqrt{n}},
-\]
-
-where $\bar{\Delta}$ is the sample mean of the differences, $s_\Delta$ is the sample standard deviation of the differences, and $n$ is the number of paired observations. The resulting statistic is compared to a $t$-distribution with $n-1$ degrees of freedom to obtain a $p$-value.
-
-The paired formulation is appropriate in this context because both model variants are evaluated on the same prediction tasks, ensuring that each pair of measurements is directly comparable.
-
-\subsection{Wilcoxon Signed-Rank Test}
-
-While the $t$-test assumes that the differences $\Delta_i$ are approximately normally distributed, this assumption may not always hold in practice, particularly when the number of observations is small. For this reason, the Wilcoxon signed-rank test is also applied as a non-parametric alternative.
-
-The Wilcoxon test evaluates whether the median of the paired differences is significantly different from zero. Instead of relying on the raw values of $\Delta_i$, the test ranks the absolute values of the differences and analyzes the sum of the ranks associated with positive and negative signs. This procedure makes the test robust to deviations from normality and to the presence of outliers.
-
-Using both the paired $t$-test and the Wilcoxon test provides a more reliable assessment of statistical significance, since the two tests rely on different assumptions about the underlying distribution of the performance differences.
 
 \section{Normal and Adjusted Label Comparison}
 
@@ -220,7 +219,7 @@ Comparing these three label formulations allows us to evaluate whether sentiment
 
 \subsection{Evolution of Sentiment Impact Across Prediction Horizons}
 
-Figures \ref{fig:cls_logistic_delta}--\ref{fig:reg_xgb_delta} illustrate the evolution of the performance difference $\Delta$ between models trained with and without sentiment features across prediction horizons from one to seven days.
+Figure \ref{fig:sentiment_model_comparison} illustrates the evolution of the performance difference $\Delta$ between models trained with and without sentiment features across prediction horizons from one to seven days.
 It can be seen that for the classification task, Logistic regression displays improved performance with sentiment features 
 across all horizons for the raw labels, with the most pronounced improvement observed for the industry-adjusted labels. 
 The improvement is generally more significant for longer horizons, particularly for 4-7 days.
@@ -310,7 +309,7 @@ Second, the choice of label definition plays a meaningful role in determining wh
 
 Finally, the results indicate a clear difference between classification and regression tasks. While sentiment features occasionally provide measurable improvements in classification performance, their impact on regression models predicting numerical returns is negligible. This finding is consistent with the intuition that textual sentiment may be more informative about the \emph{direction} of future price movements rather than the precise magnitude of those movements.
 
-\section{Group-Specific Modeling: Company, Sector, and Industry Experiments}
+\section{Group-Specific Modeling: Company, Sector, and Industry}
 
 In the previous experiments, models were trained on the full dataset containing filings from all companies. While this approach maximizes the number of available training samples, it implicitly assumes that the relationship between financial report sentiment and short-term stock price movements is homogeneous across companies and industries. In practice, however, market reactions to financial disclosures may differ substantially depending on firm-specific characteristics, sector dynamics, or industry structure.
 
@@ -538,72 +537,36 @@ Second, the impact of sentiment features varies substantially across model class
 
 Finally, the company-level experiments highlight the trade-off between model specialization and data availability. While firm-specific models allow for highly tailored predictions, the limited number of observations per company introduces significant statistical noise, reducing the reliability of the estimated effects.
 
-\section{Time-Series Models: LSTM and PatchTST Experiments}
+\section{Time-Series Comparison}
 
-\subsection{Company-Level Results}
+The goal is to determine whether modeling temporal dependencies between filings improves predictive performance and whether sentiment features provide additional value in this setting. Both an LSTM architecture and a PatchTST transformer model are evaluated across multiple sequence lengths.
+A sequence is defined as a series of consecutive filings, ordered chronologically. The sequence length corresponds to the number of past filings that the model considers when making a prediction for the next time step.
 
-This section presents the results of time-series models trained at the company (ticker) level. Both an LSTM architecture and a PatchTST transformer model are evaluated across multiple sequence lengths. The goal is to determine whether modeling temporal dependencies between filings improves predictive performance and whether sentiment features provide additional value in this setting. Results are reported separately for classification and regression tasks, and statistical significance is assessed using paired tests across tickers.
+Similarly to the previous experiments, we will group filings by company, sector, and industry, and train separate models for each group. For sector and industry, features corresponding to filings posted on the same date are aggregated by averaging the feature values across all filings. 
+This is needed since we consider filing dates as time steps and this assumes a single observation per date.
 
-\subsubsection{Classification Results}
+Here is your concise, thesis-ready LaTeX rewrite preserving exact structure, removing redundancy, keeping key statistical highlights, and adding a final discussion subsection synthesizing all results.
 
-For the classification task, the LSTM model with a sequence length of five filings yields the most consistent and statistically significant improvements. In particular, for the three-day prediction horizon, the model achieves a mean increase in macro F1 score of $\Delta = 0.065189$, with a statistically significant $p$-value of $0.005$ and a $95\%$ confidence interval of $(0.026322, 0.104056)$. When averaged across all horizons, the overall improvement remains positive at $\Delta = 0.022016$, which is also statistically significant. The effect is heterogeneous across companies, with ticker WES showing the largest improvement of $0.091123$, while USAC exhibits degraded performance with $\Delta = -0.042443$. These results suggest that short temporal sequences allow the LSTM model to exploit recent sentiment dynamics effectively.
+⸻
 
-Increasing the sequence length to ten filings results in substantially weaker evidence. Although the mean overall improvement remains positive at $\Delta = 0.005274$, the associated $p$-values are large across all horizons, indicating that the effect is not statistically significant. The dispersion across companies also increases, with WES showing a strong improvement of $0.235125$, while EME experiences a degradation of $-0.156716$. This behaviour suggests that longer sequences introduce additional noise and reduce the consistency of the sentiment signal.
-
-For a sequence length of fifteen filings, statistically significant improvement is observed only for the one-day horizon, where the mean increase reaches $\Delta = 0.067540$. However, the overall mean improvement of $\Delta = 0.003242$ is not statistically significant. The best-performing ticker in this setting is WES with an improvement of $0.077631$, while DLR shows degraded performance with $\Delta = -0.067193$. A similar pattern is observed for a sequence length of twenty filings, where the overall mean improvement is $\Delta = 0.013408$, but none of the horizons reach statistical significance. The largest improvement is observed for JEF with $0.089934$, whereas NWN shows a decrease of $-0.085640$. Overall, these results indicate that the LSTM model benefits primarily from shorter temporal contexts.
-
-The PatchTST model displays weaker and less consistent behaviour in the classification setting. With a sequence length of five filings, the mean overall improvement is $\Delta = 0.003906$, but all horizons exhibit large $p$-values, indicating a lack of statistical significance. The best-performing ticker is WES with an improvement of $0.052816$, while GSBD shows degraded performance of $-0.081072$. For a sequence length of ten filings, most horizons again display high $p$-values, although the one-day horizon shows a statistically significant degradation with mean $\Delta = -0.058218$. The extremes range from an improvement of $0.115539$ for MGEE to a degradation of $-0.064966$ for MLR.
-
-For sequence lengths of fifteen and twenty filings, the PatchTST model does not produce statistically significant results across any horizon. At a sequence length of fifteen, the largest improvement is observed for WES with $0.128477$, while MLR shows a degradation of $-0.103806$. At a sequence length of twenty, JEF achieves an improvement of $0.089934$, whereas NWN exhibits degraded performance with $\Delta = -0.085640$. Overall, the transformer-based model appears less effective than the LSTM for classification at the ticker level, particularly for shorter temporal contexts.
-
-\subsubsection{Regression Results}
-
-For the regression task, the LSTM model generally fails to produce statistically significant improvements. With a sequence length of five filings, all horizons display large $p$-values. Although not statistically significant, the mean overall change in RMSE is $\Delta = 0.001470$, indicating degraded performance when sentiment features are included. The best-performing ticker is JEF with $\Delta = -0.013684$, while RHI exhibits degraded performance with $\Delta = 0.021053$. A similar pattern is observed for a sequence length of ten filings, where the overall effect remains negative and statistically insignificant. In this setting, WES shows an improvement of $-0.013941$, whereas RHI again exhibits degraded performance with $0.028058$.
-
-For a sequence length of fifteen filings, statistically significant degradation is observed for the six-day horizon, with a mean increase in RMSE of $\Delta = 0.011960$. The overall effect remains inconsistent across companies, with JEF showing improved performance of $-0.010757$ and GSBD displaying degraded performance of $0.024234$. At a sequence length of twenty filings, all horizons again exhibit high $p$-values. The extremes range from an improvement of $-0.014657$ for USAC to a degradation of $0.039314$ for DLR. These results suggest that the LSTM model does not benefit from sentiment features for numerical return prediction at the company level.
-
-In contrast, the PatchTST model shows stronger behaviour for short sequences in the regression task. With a sequence length of five filings, the one-day horizon exhibits a statistically significant improvement with mean $\Delta = -0.158464$. The mean overall effect across horizons is also statistically significant at $\Delta = -0.056178$, indicating improved predictive performance. The best-performing ticker is JEF with $\Delta = -0.180596$, while NWN shows degraded performance with $0.083941$. This suggests that the transformer architecture can effectively leverage short-term temporal sentiment patterns for return prediction.
-
-However, for longer sequence lengths, the PatchTST model again exhibits high $p$-values across all horizons. With a sequence length of ten filings, the extremes range from an improvement of $-0.281058$ for XRX to a degradation of $0.176403$ for WES. For a sequence length of fifteen filings, GSBD shows strong improvement of $-0.296095$, while DLR exhibits degraded performance of $0.318635$. At a sequence length of twenty filings, NWN achieves improvement of $-0.284585$, whereas XRX shows degraded performance of $0.420942$. Despite these large individual effects, the lack of statistical significance indicates that the improvements are not consistent across companies.
-
-Overall, the ticker-level time-series experiments suggest that temporal modeling provides limited but task-dependent benefits. For classification, short LSTM sequences yield the most consistent improvements, while longer contexts reduce statistical significance. For regression, the PatchTST model with short sequences provides the strongest evidence of improvement, whereas the LSTM model generally fails to benefit from sentiment features. These results indicate that temporal dependencies between filings are most informative over short horizons and that transformer-based architectures may better capture these effects for numerical return prediction.
-
-\begin{figure}
-\centering
-\includegraphics[width=0.8\textwidth]{time_series/ticker_sequence_length_model_comparison.pdf}
-\caption{Evolution of the mean overall delta across all the prediction horizons against sequence length. The LSTM and PatchTST models were trained and evaluated at the company level.}
-\label{fig:ticker_sequence_length_comparison}
-\end{figure}
 
 \subsection{Sector-Level Results}
 
-This section presents the results of the time-series experiments performed at the sector level. In this setting, filings are aggregated by sector and ordered chronologically, allowing both LSTM and PatchTST models to capture temporal dependencies in sentiment dynamics at a broader market level. The objective is to evaluate whether temporal modelling improves predictive performance and whether sentiment features contribute meaningful information when analyzed at the sector granularity. Results are reported separately for classification and regression tasks, and statistical significance is assessed across sectors.
-
 \subsubsection{Classification Results}
 
-For the classification task, the LSTM model with a sequence length of five filings exhibits modest but partially significant improvements. A statistically significant increase in macro F1 score is observed for the two-day prediction horizon, with a mean improvement of $\Delta = 0.028080$. However, the mean overall improvement across all horizons is smaller, $\Delta = 0.005386$, and does not reach statistical significance. The effect varies across sectors, with the Health Care sector showing the largest improvement of $0.044555$, while the Utilities sector experiences degraded performance with $\Delta = -0.033524$. These results suggest that short sequences provide limited but potentially useful temporal information at the sector level.
+At the sector level, the LSTM model provides modest but consistent improvements for the classification task, particularly for intermediate and longer sequence lengths. With a sequence length of five filings, a statistically significant improvement is observed for the two-day horizon ($\Delta = 0.028080$), although the mean overall effect remains small and not statistically significant ($\Delta = 0.005386$). Performance varies across sectors, with Health Care benefiting most ($0.044555$) and Utilities showing degradation ($-0.033524$), indicating heterogeneous sentiment effects.
 
-Increasing the sequence length to ten filings results in weaker evidence. The LSTM model displays high $p$-values across all horizons, indicating that the observed differences are not statistically significant. Nevertheless, variability across sectors remains noticeable, with Finance showing an improvement of $0.051385$, while Consumer Staples exhibits a degradation of $-0.019872$. This behaviour suggests that longer sequences may introduce additional variability without consistent gains.
+Stronger and more consistent results emerge for longer sequences. With sequence lengths of fifteen and twenty filings, the LSTM model achieves statistically significant improvements across multiple horizons, with overall mean gains of $\Delta = 0.016668$ and $\Delta = 0.010992$, respectively. The largest improvements occur in Telecommunications ($0.073402$) and Energy ($0.041678$), while the Technology sector consistently exhibits small degradations. These results suggest that sector-level sentiment dynamics evolve over multiple filings and are better captured by longer temporal contexts.
 
-Stronger results are obtained when the sequence length is increased to fifteen filings. In this configuration, statistically significant improvements are observed for the one-day and five-day horizons, with mean increases of $\Delta = 0.061776$ and $\Delta = 0.025550$, respectively. The mean overall improvement across all horizons is $\Delta = 0.016668$, which is also statistically significant. At the sector level, Telecommunications displays the largest improvement of $0.073402$, while Technology shows a small degradation of $-0.018192$. These findings indicate that intermediate temporal contexts allow the LSTM model to capture sector-level sentiment dynamics more effectively.
-
-A similar pattern is observed for a sequence length of twenty filings. The LSTM model achieves statistically significant improvements for the two-day and seven-day horizons, with mean increases of $\Delta = 0.034196$ and $\Delta = 0.029745$, respectively. The overall mean improvement across horizons is $\Delta = 0.010992$, which is also statistically significant. The Energy sector shows the largest improvement of $0.041678$, whereas the Technology sector again exhibits degraded performance with $\Delta = -0.026257$. These results suggest that the LSTM model benefits from longer sector-level sequences, although the magnitude of improvement remains moderate.
-
-In contrast, the PatchTST model does not produce statistically significant improvements in the classification setting. For a sequence length of five filings, all horizons display high $p$-values, with the Technology sector showing the largest improvement of $0.043503$ and the Miscellaneous sector exhibiting degraded performance of $-0.045510$. With a sequence length of ten filings, the results remain statistically insignificant, with extremes ranging from an improvement of $0.029958$ for Industrials to a degradation of $-0.024859$ for Energy.
-
-For sequence lengths of fifteen and twenty filings, the PatchTST model again fails to achieve statistical significance. At a sequence length of fifteen, the Energy sector shows the largest improvement of $0.057647$, while Real Estate displays degraded performance of $-0.042957$. With a sequence length of twenty, Consumer Discretionary achieves an improvement of $0.027943$, whereas Finance exhibits degraded performance of $-0.027644$. Overall, the transformer-based architecture appears less effective than the LSTM model for sector-level classification, particularly in terms of statistical consistency across sectors.
+In contrast, the PatchTST model does not produce statistically significant improvements for any sequence length. Although individual sectors occasionally display positive effects (e.g., Technology with $0.043503$ for sequence length five), the overall results remain inconsistent and statistically insignificant. This indicates that the transformer-based architecture is less effective for sector-level directional classification.
 
 \subsubsection{Regression Results}
 
-For the regression task, the LSTM model consistently displays degraded performance when sentiment features are included. With a sequence length of five filings, the mean overall change in RMSE is $\Delta = 0.001738$, which represents a statistically significant degradation. The Industrials sector shows the largest improvement with $\Delta = -0.001558$, while Real Estate experiences degraded performance of $0.004865$. A similar pattern is observed for a sequence length of ten filings, where the mean overall change is $\Delta = 0.001025$, again statistically significant. The extremes range from an improvement of $-0.001578$ for Industrials to a degradation of $0.004104$ for Basic Materials.
+For regression, the LSTM model consistently degrades performance when sentiment features are incorporated. Statistically significant increases in RMSE are observed for sequence lengths of five, ten, and fifteen filings, with mean overall changes of $\Delta = 0.001738$, $\Delta = 0.001025$, and $\Delta = 0.001940$, respectively. Although some sectors benefit slightly (e.g., Finance with $-0.002218$), the dominant pattern is performance deterioration, suggesting that sector-level sentiment signals are not well suited for numerical return prediction.
 
-For a sequence length of fifteen filings, the LSTM model continues to display statistically significant degradation, with a mean overall change of $\Delta = 0.001940$. The Finance sector shows improved performance with $\Delta = -0.002218$, whereas Consumer Discretionary exhibits degraded performance of $0.008853$. When the sequence length is increased to twenty filings, the results become statistically insignificant, with high $p$-values across all horizons. The extremes range from an improvement of $-0.002462$ for Energy to a degradation of $0.003616$ for Industrials. These results indicate that sector-level temporal modeling with LSTM does not improve return prediction and may introduce additional noise.
+The PatchTST model exhibits mixed but generally weak behaviour. While a statistically significant improvement is observed for the three-day horizon at sequence length fifteen ($\Delta = -0.175542$), the overall effects remain insignificant across horizons. Other sequence lengths display high variability without consistent gains. Overall, sector-level regression results indicate limited predictive value from temporal sentiment modeling, with only isolated improvements observed for the transformer architecture.
 
-The PatchTST model exhibits mixed behaviour in the regression setting. With a sequence length of five filings, the mean overall change is $\Delta = -0.002801$, suggesting improved performance, but the effect is not statistically significant. The Finance sector shows the largest improvement of $-0.103430$, while Energy exhibits degraded performance of $0.154796$. For a sequence length of ten filings, all horizons again display high $p$-values. The extremes range from an improvement of $-0.182050$ for Consumer Staples to a degradation of $0.059769$ for Real Estate.
-
-For a sequence length of fifteen filings, the PatchTST model produces statistically significant improvement for the three-day horizon, with a mean change of $\Delta = -0.175542$. The Telecommunications sector shows the largest improvement of $-0.189693$, while Real Estate exhibits degraded performance of $0.106971$. However, the overall effect across horizons remains statistically insignificant. With a sequence length of twenty filings, the results again display high $p$-values across all horizons. The extremes range from an improvement of $-0.124313$ for Finance to a degradation of $0.163330$ for Technology.
-
-Overall, the sector-level experiments indicate that temporal modeling provides moderate benefits for classification but limited value for regression. The LSTM model benefits from intermediate and longer sequence lengths in the classification task, suggesting that sector-level sentiment dynamics evolve over multiple filings. In contrast, regression performance generally deteriorates when sentiment features are incorporated, particularly for the LSTM model. The PatchTST transformer exhibits weaker and less consistent behaviour overall, with only isolated improvements observed for specific horizons. These findings suggest that sector-level temporal dependencies are more informative for directional classification than for numerical return prediction.
+Overall, the sector-level experiments suggest that temporal modeling provides moderate benefits for classification but limited value for regression. The LSTM model benefits from intermediate and longer sequence lengths in the classification task, whereas regression performance generally deteriorates. The PatchTST architecture exhibits weaker and less consistent behaviour, indicating that sector-level sentiment dependencies are more informative for directional prediction than for return estimation.
 
 \begin{figure}
 \centering
@@ -614,31 +577,21 @@ Overall, the sector-level experiments indicate that temporal modeling provides m
 
 \subsection{Industry-Level Results}
 
-This section presents the results of the time-series experiments performed at the industry level. Compared to sector-level aggregation, industry grouping provides a finer granularity while still allowing temporal dependencies between filings to be modeled across multiple firms. Both LSTM and PatchTST architectures are evaluated across multiple sequence lengths, and the impact of sentiment features is assessed using paired statistical tests across industries. Results are reported separately for classification and regression tasks.
-
 \subsubsection{Classification Results}
 
-For the classification task, the LSTM model consistently exhibits statistically significant improvements across all tested sequence lengths. With a sequence length of five filings, a statistically significant improvement is observed for the six-day prediction horizon, with a mean increase in macro F1 score of $\Delta = 0.017768$. The mean overall improvement across all horizons is also statistically significant at $\Delta = 0.009922$. The effect varies across industries, with Cable \& Other Pay Television Services showing the largest improvement of $0.093778$, while the Precious Metals industry exhibits degraded performance with $\Delta = -0.068252$. These results indicate that short temporal contexts already provide useful predictive information at the industry level.
+At the industry level, the LSTM model produces consistent and statistically significant improvements across all sequence lengths. Even short sequences provide meaningful gains, with sequence length five yielding a significant overall improvement of $\Delta = 0.009922$. Performance improves further for sequence length ten, where statistically significant gains appear for both short and long horizons and the overall improvement reaches $\Delta = 0.012175$. These improvements are heterogeneous across industries, with large gains observed for sectors such as Consumer Electronics/Appliances ($0.090481$) and Farming/Seeds/Milling ($0.107958$), while a few industries show degradation.
 
-Increasing the sequence length to ten filings yields stronger and more consistent improvements. Statistically significant gains are observed for the one-day and seven-day horizons, with mean increases of $\Delta = 0.017355$ and $\Delta = 0.030988$, respectively. The overall mean improvement across all horizons is also statistically significant at $\Delta = 0.012175$. The largest improvement is observed for the Consumer Electronics/Appliances industry with $0.090481$, while the Ophthalmic Goods industry shows degraded performance with $\Delta = -0.100061$. These results suggest that moderate sequence lengths allow the LSTM model to capture richer temporal sentiment dynamics within industries.
+Longer sequences maintain this positive behaviour. Sequence lengths of fifteen and twenty filings continue to produce statistically significant overall improvements ($\Delta = 0.009590$ and $\Delta = 0.011102$), confirming that industry-level sentiment dynamics remain informative across temporal contexts. Overall, the LSTM model demonstrates robust and consistent improvements for directional prediction at the industry level.
 
-For a sequence length of fifteen filings, statistically significant improvement is observed for the one-day horizon with $\Delta = 0.020544$. The mean overall improvement remains statistically significant at $\Delta = 0.009590$. The Farming/Seeds/Milling industry shows the largest improvement of $0.107958$, whereas Wholesale Distributors exhibit degraded performance with $\Delta = -0.122487$. When the sequence length is increased to twenty filings, statistically significant improvements are again observed for the one-day and seven-day horizons, with $\Delta = 0.016587$ and $\Delta = 0.021185$, respectively. The overall mean improvement across horizons is $\Delta = 0.011102$, also statistically significant. The largest improvement is observed for Meat/Poultry/Fish with $0.117101$, while Ophthalmic Goods again displays degraded performance with $\Delta = -0.065267$. Overall, the LSTM model demonstrates consistent and statistically significant gains across all tested sequence lengths in the industry-level classification setting.
-
-The PatchTST model also produces statistically significant improvements for several sequence lengths, although the effects are generally smaller than those observed for the LSTM model. With a sequence length of five filings, statistically significant improvement is observed for the five-day horizon with $\Delta = 0.021053$, and the mean overall improvement across horizons is also significant at $\Delta = 0.006295$. The largest improvement is observed for Paints/Coatings with $0.098751$, while Commercial Banks exhibit degraded performance with $\Delta = -0.165768$.
-
-For a sequence length of ten filings, statistically significant improvement is observed for the seven-day horizon with $\Delta = 0.012564$, and the mean overall improvement across horizons is $\Delta = 0.005371$. The Computer Communications Equipment industry shows the largest improvement of $0.116364$, whereas Accident \& Health Insurance exhibits degraded performance with $\Delta = -0.068147$. With a sequence length of fifteen filings, the mean overall delta of $\Delta = 0.004835$ remains statistically significant, although no individual horizons show strong effects. The largest improvement is observed for Oil and Gas Field Machinery with $0.069994$, while Pollution Control Equipment displays degraded performance with $\Delta = -0.064798$. For a sequence length of twenty filings, the PatchTST model does not produce statistically significant results. The extremes range from an improvement of $0.094195$ for Cable \& Other Pay Television Services to a degradation of $-0.127700$ for Meat/Poultry/Fish. Overall, the transformer-based model provides modest but consistent improvements for shorter and intermediate sequence lengths, although the magnitude of gains is smaller than for the LSTM model.
+The PatchTST model also provides statistically significant improvements for shorter and intermediate sequences, although the magnitude of gains is smaller. Sequence lengths five and ten yield significant overall improvements of $\Delta = 0.006295$ and $\Delta = 0.005371$, respectively, while sequence length fifteen produces a smaller but still significant effect ($\Delta = 0.004835$). For sequence length twenty, the results become statistically insignificant. These findings indicate that both architectures benefit from industry-level temporal sentiment patterns, with the LSTM model providing stronger and more consistent gains.
 
 \subsubsection{Regression Results}
 
-For the regression task, the LSTM model consistently displays statistically significant degradation in predictive performance when sentiment features are included. With a sequence length of five filings, statistically significant degradation is observed for the one-day horizon, with $\Delta = 0.002515$. The extremes range from an improvement of $-0.049705$ for Commercial Banks to a degradation of $0.019540$ for Steel/Iron Ore. For a sequence length of ten filings, the mean overall delta is $\Delta = 0.001484$, indicating statistically significant degradation. The largest improvement is observed for Wholesale Distributors with $-0.016837$, while Coal Mining exhibits degraded performance with $0.026571$.
+For regression, the LSTM model consistently produces statistically significant degradation across all sequence lengths. Mean overall increases in RMSE range from $\Delta = 0.001025$ to $\Delta = 0.002515$, indicating that incorporating temporal sentiment features worsens numerical return prediction. Although individual industries occasionally benefit, the overall pattern remains negative, suggesting that industry-level sentiment dynamics are not informative for regression targets.
 
-Similar behaviour is observed for longer sequence lengths. With fifteen filings, the mean overall delta is $\Delta = 0.001509$, again statistically significant. Office Equipment/Supplies/Services shows improved performance with $-0.010640$, whereas Wholesale Distributors display degraded performance of $0.012404$. For a sequence length of twenty filings, the mean overall delta remains statistically significant at $\Delta = 0.001025$. The extremes range from an improvement of $-0.014092$ for Accident \& Health Insurance to a degradation of $0.011117$ for Medical Electronics. These results indicate that temporal modeling with LSTM does not improve numerical return prediction at the industry level and may introduce additional noise.
+In contrast, the PatchTST model provides statistically significant improvements for shorter sequences. With sequence length five, significant gains are observed at the two-day and seven-day horizons, with an overall improvement of $\Delta = -0.016597$. Sequence length ten also produces a significant improvement for the one-day horizon ($\Delta = -0.042393$). However, longer sequences reduce consistency, with sequence length fifteen showing no significant effects and sequence length twenty displaying statistically significant degradation for the five-day horizon. These results indicate that transformer-based temporal modeling is most effective for short-term regression at the industry level.
 
-In contrast, the PatchTST model produces several statistically significant improvements for shorter sequence lengths. With a sequence length of five filings, statistically significant improvements are observed for the two-day and seven-day horizons, with $\Delta = -0.038129$ and $\Delta = -0.036723$, respectively. The mean overall improvement across all horizons is also statistically significant at $\Delta = -0.016597$. The Water Supply industry shows the largest improvement of $-0.196339$, while Other Consumer Services exhibit degraded performance with $0.153214$.
-
-For a sequence length of ten filings, statistically significant improvement is observed for the one-day horizon with $\Delta = -0.042393$. The largest improvement is observed for Aluminum with $-0.225476$, whereas Clothing/Shoe/Accessory Stores display degraded performance with $0.228436$. With a sequence length of fifteen filings, the PatchTST model does not produce statistically significant results, although large variations across industries remain. The extremes range from an improvement of $-0.242642$ for Advertising to a degradation of $0.294257$ for Meat/Poultry/Fish. For a sequence length of twenty filings, statistically significant degradation is observed for the five-day horizon with $\Delta = 0.046109$. The extremes range from an improvement of $-0.252129$ for Shoe Manufacturing to a degradation of $0.241827$ for Auto Parts: O.E.M.
-
-Overall, the industry-level time-series experiments indicate that temporal modeling is most beneficial for classification tasks. The LSTM model provides consistent and statistically significant improvements across all sequence lengths, suggesting that industry-level sentiment dynamics contain useful directional information. For regression, however, the LSTM model consistently degrades performance, while the PatchTST model provides improvements primarily for shorter sequences. These findings suggest that temporal sentiment dependencies at the industry level are more informative for directional prediction than for numerical return estimation, and that transformer-based architectures may better capture short-term return dynamics in this setting.
+Overall, the industry-level experiments show that temporal modeling is particularly effective for classification tasks. The LSTM model provides consistent improvements across all sequence lengths, while PatchTST yields smaller but still meaningful gains. For regression, however, the LSTM model consistently degrades performance, whereas PatchTST provides improvements primarily for short sequences, suggesting that transformer architectures better capture short-term return dynamics.
 
 \begin{figure}
 \centering
@@ -646,3 +599,36 @@ Overall, the industry-level time-series experiments indicate that temporal model
 \caption{Evolution of the mean overall delta across all the prediction horizons against sequence length. The LSTM and PatchTST models were trained and evaluated at the industry level.}
 \label{fig:industry_sequence_length_comparison}
 \end{figure}
+
+\subsection{Company-Level Results}
+
+\subsubsection{Classification Results}
+
+At the company level, the LSTM model achieves the strongest improvements for short temporal contexts. With a sequence length of five filings, a statistically significant improvement is observed for the three-day horizon ($\Delta = 0.065189$, $p=0.005$), while the overall improvement remains significant at $\Delta = 0.022016$. Performance varies across companies, with WES showing a large improvement ($0.091123$) and USAC displaying degradation ($-0.042443$). These results indicate that recent filing sentiment contains useful predictive information at the ticker level.
+
+Increasing the sequence length reduces consistency. For sequence lengths ten, fifteen, and twenty, the mean overall improvements remain small ($\Delta = 0.005274$, $\Delta = 0.003242$, and $\Delta = 0.013408$) and are not statistically significant. Although individual companies occasionally show strong gains, the effects are inconsistent, suggesting that longer temporal contexts introduce noise rather than additional signal.
+
+The PatchTST model performs worse in the classification setting. Across all sequence lengths, results remain statistically insignificant, with only isolated improvements or degradations. In some cases, short-horizon degradation is observed (e.g., $\Delta = -0.058218$ for sequence length ten), further indicating unstable performance. Overall, LSTM clearly outperforms PatchTST for ticker-level classification.
+
+\subsubsection{Regression Results}
+
+For regression, the LSTM model fails to produce meaningful improvements. Across all sequence lengths, the mean overall changes in RMSE are small and generally positive, indicating degraded performance. A statistically significant degradation is observed for the six-day horizon at sequence length fifteen ($\Delta = 0.011960$), while other configurations remain insignificant. These results suggest that company-level temporal sentiment modeling is not effective for return prediction with LSTM.
+
+The PatchTST model performs better for short sequences. With sequence length five, statistically significant improvement is observed for the one-day horizon ($\Delta = -0.158464$), and the overall effect across horizons is also significant ($\Delta = -0.056178$). This indicates that the transformer architecture can exploit short-term sentiment dynamics for regression. However, longer sequence lengths yield inconsistent and statistically insignificant results, despite large variations across companies.
+
+Overall, ticker-level experiments indicate that short temporal contexts are most informative. LSTM performs best for classification with short sequences, while PatchTST provides the strongest regression improvements, also for short sequences. Longer temporal windows reduce statistical significance and introduce variability across companies.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.8\textwidth]{time_series/ticker_sequence_length_model_comparison.pdf}
+\caption{Evolution of the mean overall delta across all the prediction horizons against sequence length. The LSTM and PatchTST models were trained and evaluated at the company level.}
+\label{fig:ticker_sequence_length_comparison}
+\end{figure}
+
+\subsection{Discussion}
+
+Across all aggregation levels, the results highlight clear differences between classification and regression tasks, as well as between the LSTM and PatchTST architectures. Temporal modeling consistently benefits classification, particularly at the industry and sector levels. The LSTM model provides the most stable improvements, especially for intermediate sequence lengths at the sector level and across all sequence lengths at the industry level. At the company level, shorter sequences are most effective, indicating that recent filing sentiment contains the most informative signal.
+
+In contrast, regression results are considerably weaker. The LSTM model consistently degrades performance across aggregation levels, suggesting that temporal sentiment dynamics are more suitable for directional prediction than for numerical return estimation. The PatchTST architecture partially mitigates this limitation, providing statistically significant improvements for short sequences, particularly at the company and industry levels. This behaviour suggests that transformer-based models may better capture short-term dependencies relevant for return prediction.
+
+Overall, the experiments indicate that temporal sentiment information is most useful for classification tasks and that its effectiveness increases with aggregation level. Industry-level modeling provides the most consistent gains, followed by sector-level results, while company-level performance remains more heterogeneous. Furthermore, short to intermediate sequence lengths generally outperform longer contexts, suggesting that sentiment information decays over time. These findings support the conclusion that temporal sentiment modeling can improve directional prediction, while numerical return forecasting remains more challenging and model-dependent.
