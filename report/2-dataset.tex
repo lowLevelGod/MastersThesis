@@ -21,7 +21,7 @@ Unlike event-driven filings (e.g., 8-K) that may be triggered by heterogeneous c
 Prior research demonstrates that these filings contain economically meaningful information relevant to valuation and risk assessment\cite{textual-analysis-dictionaries-and-10ks}. 
 Focusing on these forms ensures comparability across firms and time, while concentrating on disclosures that are central to investors' expectations formation.
 
-The textual data were obtained from the University of Notre Dame's cleaned \href{https://sraf.nd.edu/sec-edgar-data/}{SEC filings dataset}, which removes HTML tags, tables, and formatting artifacts from raw EDGAR documents. 
+The textual data were obtained from the University of Notre Dame's cleaned SEC filings dataset\cite{sec_edgar_nd}, which removes HTML tags, tables, and formatting artifacts from raw EDGAR documents. 
 This preprocessing is particularly important for natural language processing applications, as raw filings often contain extensive markup and tabular structures that are not directly usable in textual modeling.
 
 The sample period spans 2011 to 2024. 
@@ -61,7 +61,7 @@ To align filings with market data, it was necessary to construct a mapping from 
 This mapping was created by combining two sources. 
 First, the SEC's Insider Transactions Data Sets (Forms 3, 4, and 5) were used, as these filings often include both CIK and ticker information. 
 These historical submissions provide time-varying mappings that are particularly useful for capturing changes in ticker symbols over time. 
-Second, the SEC's publicly available ticker-to-CIK mapping file (\href{https://www.sec.gov/include/ticker.txt}{ticker.txt}) was used to supplement recent mappings. 
+Second, the SEC's publicly available ticker-to-CIK mapping file\cite{sec_ticker_list} was used to supplement recent mappings. 
 Because the latter primarily reflects current ticker assignments and may not accurately represent historical changes, combining both sources improves coverage and historical accuracy.
 
 After mapping CIK identifiers to stock tickers, each ticker is treated as a distinct firm in the dataset. This transformation allows us to move from a filing-level perspective to a firm-level panel structure analysis. The objective of this section is to assess cross-sectional coverage, panel balance, and potential concentration effects that may influence downstream machine learning models.
@@ -74,7 +74,7 @@ The relatively large number of firms ensures that the dataset captures heterogen
 
 \section{Stock Price Data}
 
-Stock price data were obtained from \href{https://stooq.com/db/h/}{Stooq}, which provides historical daily price data for companies listed on the NYSE and NASDAQ. 
+Stock price data were obtained from Stooq\cite{stooq_data}, which provides historical daily price data for companies listed on the NYSE and NASDAQ. 
 The dataset includes daily open, high, low, close, and volume information.
 
 To align financial reports with market data, each filing was treated as an event date. 
@@ -188,13 +188,13 @@ This normalized range captures the intensity of price fluctuations within a sing
 
 \subsubsection*{Economic Interpretation}
 
-Together, these features summarize multiple dimensions of pre-filing market conditions: trend (moving averages, momentum), risk (volatility measures, high–low range), and trading activity (volume z-score). Importantly, all quantities are computed strictly before the filing date, ensuring that the predictive models operate in a realistic, forward-looking setting.
+Together, these features summarize multiple dimensions of pre-filing market conditions: trend (moving averages, momentum), risk (volatility measures, high-low range), and trading activity (volume z-score). Importantly, all quantities are computed strictly before the filing date, ensuring that the predictive models operate in a realistic, forward-looking setting.
 
 Including these structured market features serves two purposes. First, they provide a benchmark level of predictive information derived purely from price dynamics. Second, they allow for an assessment of whether textual information extracted from financial disclosures adds incremental predictive power beyond what is already embedded in historical price and volume patterns.
 
 \section{Sector and Industry Classification}
 
-To enrich the dataset with structural firm characteristics, sector and industry classifications were incorporated using data from the \href{https://www.nasdaq.com/market-activity/stocks/screener}{NASDAQ Stock Screener}, which provides mappings from ticker symbols to sector and industry categories. 
+To enrich the dataset with structural firm characteristics, sector and industry classifications were incorporated using data from the NASDAQ Stock Screener\cite{nasdaq_screener}, which provides mappings from ticker symbols to sector and industry categories. 
 Including sector and industry identifiers enables cross-sectional analysis of heterogeneous effects across economic segments and allows for later examination of sector-adjusted or industry-adjusted return behavior.
 
 The dataset spans 12 unique sectors and 149 unique industries (see Appendix \ref{appendix:sector_industry_distribution}), indicating substantial economic diversity. 
