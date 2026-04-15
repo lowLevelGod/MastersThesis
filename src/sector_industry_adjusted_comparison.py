@@ -547,6 +547,8 @@ def analyze_full_results(task, models_dict):
     set_publication_style()
     
     label_types = ["raw", "sector_adj", "industry_adj"]
+    
+    best_results = []
 
     for model_name in models_dict.keys():
 
@@ -623,6 +625,31 @@ def analyze_full_results(task, models_dict):
             print(f"95% CI: ({ci_low:.6f}, {ci_high:.6f})")
             print(f"T-test p-value: {p_val:.6f}")
             print(f"Wilcoxon p-value: {w_p}")
+            
+            # =====================================================
+            # Track BEST result
+            # =====================================================
+
+            avg_test_no_sent = subset["test_no_sent"].mean()
+
+            if task == "classification":
+                is_improvement = mean_delta > 0
+                percent = (mean_delta / abs(avg_test_no_sent)) * 100
+            else:
+                # regression: lower is better
+                is_improvement = mean_delta < 0
+                percent = (-mean_delta / abs(avg_test_no_sent)) * 100
+
+            best_results.append({
+                "model": model_name,
+                "task": task,
+                "label_type": label_type,
+                "mean_delta": mean_delta,
+                "p_value": p_val,
+                "significant": p_val < 0.05,
+                "improvement": is_improvement,
+                "percent": percent
+            })
 
         # =====================================================
         # 3️⃣ Baseline Comparison (Model vs Naive)
@@ -673,6 +700,40 @@ def analyze_full_results(task, models_dict):
                 print("p-value:", p_val)
 
         print("\nAnalysis completed for:", model_name)
+        
+    # =========================================================
+    # FINAL BEST RESULTS PER TASK + LABEL TYPE
+    # =========================================================
+
+    print("\n" + "="*90)
+    print("BIGGEST IMPROVEMENTS SUMMARY")
+    print("="*90)
+
+    df_best = pd.DataFrame(best_results)
+
+    for label_type in label_types:
+
+        subset = df_best[df_best["label_type"] == label_type]
+
+        if subset.empty:
+            continue
+
+        if task == "classification":
+            best = subset.loc[subset["mean_delta"].idxmax()]
+        else:
+            best = subset.loc[subset["mean_delta"].idxmin()]
+
+        direction = "IMPROVEMENT" if best["improvement"] else "DEGRADATION"
+
+        print("\n---------------------------------------------")
+        print(f"Task: {best['task']}")
+        print(f"Label type: {best['label_type']}")
+        print(f"Best model: {best['model']}")
+        print(f"Mean Δ: {best['mean_delta']:.6f}")
+        print(f"Percent improvement: {best['percent']:.2f}%")
+        print(f"Statistically significant: {best['significant']}")
+        print(f"Result type: {direction}")
+        print(f"p-value: {best['p_value']:.6f}")
         
 analyze_full_results("classification", classification_models)
 analyze_full_results("regression", regression_models)

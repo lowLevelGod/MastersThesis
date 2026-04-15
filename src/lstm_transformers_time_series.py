@@ -618,6 +618,201 @@ def analyze_all_lstm_experiments(group_col):
     plt.tight_layout()
     plt.savefig(f"{group_col}_sequence_length_model_comparison.pdf")
     plt.close()
+    
+    
+def analyze_best(group_col):
+
+    set_publication_style()
+
+    tasks = ["classification", "regression"]
+    models = ["LSTM", "PatchTST"]
+
+    summary_results = []
+    entity_results = []
+
+    # -------------------------------------------------------
+    # Run analysis per experiment
+    # -------------------------------------------------------
+
+    for task in tasks:
+        for model_name in models:
+            for seq_len in [5, 10, 15, 20]:
+
+                csv_path = f"results_{group_col}_{task}_{model_name}_seq{seq_len}.csv"
+
+                if not os.path.exists(csv_path):
+                    continue
+
+                df_res = pd.read_csv(csv_path)
+
+                # =====================================================
+                # 1️⃣ Average per group (correct aggregation)
+                # =====================================================
+
+                avg_delta = (
+                    df_res.groupby(group_col)["delta"]
+                    .mean()
+                    .dropna()
+                )
+
+                avg_no_sent = (
+                    df_res.groupby(group_col)["test_no_sent"]
+                    .mean()
+                    .dropna()
+                )
+
+                # align indices
+                common = avg_delta.index.intersection(avg_no_sent.index)
+
+                avg_delta = avg_delta.loc[common]
+                avg_no_sent = avg_no_sent.loc[common]
+
+                # percent improvement vs no sentiment
+                pct = avg_delta / avg_no_sent * 100
+
+                # =====================================================
+                # 2️⃣ statistical test (across groups)
+                # =====================================================
+
+                deltas = avg_delta.values
+
+                if len(deltas) >= 5:
+                    t_stat, p_val = ttest_1samp(deltas, 0)
+                else:
+                    p_val = np.nan
+
+                # =====================================================
+                # store per entity results
+                # =====================================================
+
+                for entity in avg_delta.index:
+                    entity_results.append({
+                        "group": group_col,
+                        "task": task,
+                        "model": model_name,
+                        "seq_len": seq_len,
+                        "entity": entity,
+                        "mean_delta": avg_delta.loc[entity],
+                        "pct": pct.loc[entity],
+                        "p_value": p_val
+                    })
+
+                # =====================================================
+                # store overall model result
+                # =====================================================
+
+                summary_results.append({
+                    "group": group_col,
+                    "task": task,
+                    "model": model_name,
+                    "seq_len": seq_len,
+                    "mean_delta": avg_delta.mean(),
+                    "pct": pct.mean(),
+                    "p_value": p_val
+                })
+
+    # =========================================================
+    # GLOBAL ANALYSIS
+    # =========================================================
+
+    df_summary = pd.DataFrame(summary_results)
+    df_entities = pd.DataFrame(entity_results)
+
+    for task in tasks:
+
+        print("\n" + "="*80)
+        print(f"{group_col.upper()} | {task.upper()} | GLOBAL ANALYSIS")
+        print("="*80)
+
+        task_entities = df_entities[df_entities["task"] == task]
+        task_summary = df_summary[df_summary["task"] == task]
+
+        # =====================================================
+        # BEST ENTITY IMPROVEMENT
+        # =====================================================
+
+        if task == "classification":
+            best_idx = task_entities["mean_delta"].idxmax()
+            worst_idx = task_entities["mean_delta"].idxmin()
+        else:
+            best_idx = task_entities["mean_delta"].idxmin()
+            worst_idx = task_entities["mean_delta"].idxmax()
+
+        best = task_entities.loc[best_idx]
+        worst = task_entities.loc[worst_idx]
+
+        print("\n------------------------------------------------------------")
+        print("BEST IMPROVEMENT")
+        print("------------------------------------------------------------")
+
+        print("Group:", best["group"])
+        print("Entity:", best["entity"])
+        print("Model:", best["model"])
+        print("Seq length:", best["seq_len"])
+        print("Mean Δ:", best["mean_delta"])
+        print("Percent improvement:", best["pct"], "%")
+
+        if task == "classification":
+            result_type = "IMPROVEMENT" if best["mean_delta"] > 0 else "DEGRADATION"
+        else:
+            result_type = "IMPROVEMENT" if best["mean_delta"] < 0 else "DEGRADATION"
+
+        print("Result type:", result_type)
+
+        # =====================================================
+        # WORST ENTITY
+        # =====================================================
+
+        print("\n------------------------------------------------------------")
+        print("BIGGEST DEGRADATION")
+        print("------------------------------------------------------------")
+
+        print("Group:", worst["group"])
+        print("Entity:", worst["entity"])
+        print("Model:", worst["model"])
+        print("Seq length:", worst["seq_len"])
+        print("Mean Δ:", worst["mean_delta"])
+        print("Percent change:", worst["pct"], "%")
+
+        if task == "classification":
+            result_type = "IMPROVEMENT" if worst["mean_delta"] > 0 else "DEGRADATION"
+        else:
+            result_type = "IMPROVEMENT" if worst["mean_delta"] < 0 else "DEGRADATION"
+
+        print("Result type:", result_type)
+
+        # =====================================================
+        # BEST OVERALL MODEL
+        # =====================================================
+
+        if task == "classification":
+            best_model_idx = task_summary["mean_delta"].idxmax()
+        else:
+            best_model_idx = task_summary["mean_delta"].idxmin()
+
+        best_model = task_summary.loc[best_model_idx]
+
+        significant = best_model["p_value"] < 0.05 if not np.isnan(best_model["p_value"]) else False
+
+        print("\n------------------------------------------------------------")
+        print("BEST OVERALL MODEL EFFECT")
+        print("------------------------------------------------------------")
+
+        print("Grouping:", best_model["group"])
+        print("Task:", task)
+        print("Best model:", best_model["model"])
+        print("Sequence length:", best_model["seq_len"])
+        print("Mean overall Δ:", best_model["mean_delta"])
+        print("Percent improvement:", best_model["pct"], "%")
+        print("Statistically significant:", significant)
+        print("p-value:", best_model["p_value"])
+
+        if task == "classification":
+            result_type = "IMPROVEMENT" if best_model["mean_delta"] > 0 else "DEGRADATION"
+        else:
+            result_type = "IMPROVEMENT" if best_model["mean_delta"] < 0 else "DEGRADATION"
+
+        print("Result type:", result_type)
 
 # Run experiments
 # ticker level
@@ -632,6 +827,10 @@ def analyze_all_lstm_experiments(group_col):
 # run_experiment(df, "industry", task="classification")
 # run_experiment(df, "industry", task="regression")
 
-analyze_all_lstm_experiments("ticker")
-analyze_all_lstm_experiments("sector")
-analyze_all_lstm_experiments("industry")
+# analyze_all_lstm_experiments("ticker")
+# analyze_all_lstm_experiments("sector")
+# analyze_all_lstm_experiments("industry")
+
+analyze_best("ticker")
+analyze_best("sector")
+analyze_best("industry")

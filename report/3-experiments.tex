@@ -289,6 +289,21 @@ The results for XGBoost are more neutral. When raw labels are used, the average 
 
 Despite these heterogeneous effects, all classification models outperform the trivial majority-class baseline by a substantial margin. Depending on the model and label type, the improvement over the baseline ranges from approximately $0.03$ to $0.18$ in macro F1 score. The associated statistical tests yield very small $p$-values in most cases, confirming that the models capture meaningful predictive patterns from the available feature set.
 
+\begin{table}
+\centering
+\caption{Best sentiment-driven improvements for the classification task across label types. Positive values indicate improvement for F1 Score.}
+\label{tab:classification_best_models}
+\begin{tabular}{lccc}
+\hline
+\textbf{Label Type} & \textbf{Model} & \textbf{Improvement} & \textbf{Statistically Significant} \\
+\hline
+Raw & Logistic & 0.52\% & Yes \\
+Sector-adjusted & Logistic & 0.05\% & No \\
+Industry-adjusted & Logistic & 3.38\% & Yes \\
+\hline
+\end{tabular}
+\end{table}
+
 \subsection{Regression Results}
 
 Across all regression models, the magnitude of the observed changes in RMSE is extremely small, typically on the order of $10^{-5}$. For Ridge regression with raw labels, the mean difference is $\Delta = 9 \times 10^{-6}$, and the corresponding confidence interval includes zero, indicating no statistically significant effect. When sector-adjusted labels are used, the average difference becomes slightly negative ($\Delta = -5 \times 10^{-6}$), but the statistical tests again fail to reject the null hypothesis.
@@ -298,6 +313,21 @@ A statistically significant change is observed only when Ridge regression is app
 For the Random Forest regression model, the differences between models with and without sentiment features are consistently small and statistically insignificant across all label types. A similar pattern emerges for XGBoost regression. Although small variations in RMSE are observed across horizons, the corresponding confidence intervals always include zero and the hypothesis tests fail to detect statistically significant differences.
 
 Nevertheless, all regression models perform at least comparably to the baseline mean predictor, and in some cases provide modest improvements in RMSE. However, the inclusion of sentiment features does not appear to materially influence predictive performance in this setting.
+
+\begin{table}
+\centering
+\caption{Best sentiment-driven improvements for the regression task across label types. Negative values indicate improvement for RMSE.}
+\label{tab:regression_best_models}
+\begin{tabular}{lccc}
+\hline
+\textbf{Label Type} & \textbf{Model} & \textbf{Improvement} & \textbf{Statistically Significant} \\
+\hline
+Raw & Random Forest & 0.00\% & No \\
+Sector-adjusted & Random Forest & -0.01\% & No \\
+Industry-adjusted & Random Forest & -0.02\% & No \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{Discussion}
 
@@ -334,6 +364,63 @@ The difference in predictive performance between these two configurations is den
 In this case, the paired differences $\Delta_i$ correspond to the performance improvement obtained by adding sentiment features within each group across the horizons.
 For example, in the sector-level experiments each $\Delta_i$ represents the difference in predictive performance for a specific sector between the model with sentiment features and the corresponding model without them for a specific horizon. 
 The number of paired observations $n$ therefore equals the number of groups considered (e.g., sectors or industries) for a single horizon, while for all the horizons combined $n$ equals the product of the number of groups and the number of horizons.
+
+\begin{table}
+\centering
+\caption{Best overall model performance across grouping levels. Positive values indicate improvements for classification (F1 Score), while negative values indicate improvements for regression (RMSE).}
+\label{tab:overall_group_results}
+\begin{tabular}{|l|l|l|c|c|}
+\hline
+Task & Grouping & Model & Improvement & Statistically Significant \\
+\hline
+Classification & Sector   & Logistic      & 1.76\%  & Yes \\
+Classification & Industry & Logistic      & 3.47\%  & Yes \\
+Classification & Company  & RandomForest  & 7.99\%  & No  \\
+\hline
+Regression & Sector   & RandomForest & -0.17\% & No \\
+Regression & Industry & XGBoost      & -0.07\% & No \\
+Regression & Company  & RandomForest & -0.59\% & No \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}
+\centering
+\caption{Largest individual entity improvements across grouping levels. Positive values indicate improvements for classification (F1 Score), while negative values indicate improvements for regression (RMSE).}
+\label{tab:best_entity_results}
+\begin{tabular}{|l|l|l|l|c|}
+\hline
+Task & Grouping & Entity & Model & Improvement \\
+\hline
+Classification & Sector   & Miscellaneous            & Logistic     & 6.56\% \\
+Classification & Industry & Consumer Specialties     & Logistic     & 23.38\% \\
+Classification & Company  & WES                      & XGBoost      & 88.19\% \\
+\hline
+Regression & Sector   & Miscellaneous  & RandomForest & -0.64\% \\
+Regression & Industry & Semiconductors & Ridge        & -5.35\% \\
+Regression & Company  & EQS            & RandomForest & -8.99\% \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}
+\centering
+\caption{Largest individual degradations across grouping levels. Positive values indicate worse performance for regression (RMSE), while negative values indicate worse performance for classification (F1 Score).}
+\label{tab:worst_entity_results}
+\begin{tabular}{|l|l|l|l|c|}
+\hline
+Task & Grouping & Entity & Model & Change \\
+\hline
+Classification & Sector   & Telecommunications     & RandomForest & -8.08\% \\
+Classification & Industry & Multi-Sector Companies & XGBoost      & -15.12\% \\
+Classification & Company  & SPB                   & XGBoost      & -24.83\% \\
+\hline
+Regression & Sector   & Telecommunications & XGBoost      & 0.34\% \\
+Regression & Industry & Precious Metals    & RandomForest & 11.05\% \\
+Regression & Company  & MLR                & Ridge        & 31.36\% \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{Sector-Level Results}
 
@@ -471,7 +558,6 @@ For logistic regression, the average improvement across companies is negative ($
 
 These findings highlight the limitations of company-level modeling under data constraints. While firm-specific models may capture idiosyncratic patterns, the limited number of filings per company reduces statistical reliability and increases the risk of overfitting.
 
-
 \begin{figure}
 \centering
 
@@ -545,10 +631,62 @@ A sequence is defined as a series of consecutive filings, ordered chronologicall
 Similarly to the previous experiments, we will group filings by company, sector, and industry, and train separate models for each group. For sector and industry, features corresponding to filings posted on the same date are aggregated by averaging the feature values across all filings. 
 This is needed since we consider filing dates as time steps and this assumes a single observation per date.
 
-Here is your concise, thesis-ready LaTeX rewrite preserving exact structure, removing redundancy, keeping key statistical highlights, and adding a final discussion subsection synthesizing all results.
+\begin{table}
+\centering
+\caption{Best overall model performance for each grouping and task. Positive values indicate improvements for classification (F1 Score), while negative values indicate improvements for regression (RMSE).}
+\label{tab:lstm_patchtst_overall}
+\begin{tabular}{|l|l|l|c|c|}
+\hline
+Task & Grouping & Model (Seq Len) & Improvement & Statistically Significant \\
+\hline
+Classification & Company  & PatchTST (20) & 20.56\% & No \\
+Classification & Sector   & LSTM (15)     & 7.39\%  & Yes \\
+Classification & Industry & LSTM (10)     & 5.49\%  & Yes \\
+\hline
+Regression & Company  & PatchTST (5)  & -11.35\% & Yes \\
+Regression & Sector   & PatchTST (15) & -6.04\%  & No \\
+Regression & Industry & PatchTST (5)  & -2.39\%  & Yes \\
+\hline
+\end{tabular}
+\end{table}
 
-⸻
+\begin{table}
+\centering
+\caption{Largest individual entity improvements. Positive values indicate improvements for classification (F1 Score), while negative values indicate improvements for regression (RMSE).}
+\label{tab:lstm_patchtst_best_entities}
+\begin{tabular}{|l|l|l|l|c|}
+\hline
+Task & Grouping & Entity & Model (Seq Len) & Improvement \\
+\hline
+Classification & Company  & WES                   & LSTM (10)      & 169.29\% \\
+Classification & Sector   & Telecommunications    & LSTM (15)      & 33.31\%  \\
+Classification & Industry & Meat/Poultry/Fish    & LSTM (20)      & 89.56\%  \\
+\hline
+Regression & Company  & GSBD                 & PatchTST (15) & -53.13\% \\
+Regression & Sector   & Telecommunications   & PatchTST (15) & -35.12\% \\
+Regression & Industry & Shoe Manufacturing   & PatchTST (20) & -46.20\% \\
+\hline
+\end{tabular}
+\end{table}
 
+\begin{table}[H]
+\centering
+\caption{Largest individual degradations. Negative values indicate worse performance for classification (F1 Score), while positive values indicate worse performance for regression (RMSE).}
+\label{tab:lstm_patchtst_worst_entities}
+\begin{tabular}{|l|l|l|l|c|}
+\hline
+Task & Grouping & Entity & Model (Seq Len) & Change \\
+\hline
+Classification & Company  & EME                  & LSTM (10)      & -43.70\% \\
+Classification & Sector   & Miscellaneous        & PatchTST (5)   & -15.16\% \\
+Classification & Industry & Commercial Banks     & PatchTST (5)   & -46.24\% \\
+\hline
+Regression & Company  & XRX                & PatchTST (20) & 236.70\% \\
+Regression & Sector   & Technology         & PatchTST (20) & 35.93\%  \\
+Regression & Industry & Meat/Poultry/Fish  & PatchTST (15) & 115.18\% \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{Sector-Level Results}
 
@@ -627,7 +765,7 @@ Overall, ticker-level experiments indicate that short temporal contexts are most
 
 \subsection{Discussion}
 
-Across all aggregation levels, the results highlight clear differences between classification and regression tasks, as well as between the LSTM and PatchTST architectures. Temporal modeling consistently benefits classification, particularly at the industry and sector levels. The LSTM model provides the most stable improvements, especially for intermediate sequence lengths at the sector level and across all sequence lengths at the industry level. At the company level, shorter sequences are most effective, indicating that recent filing sentiment contains the most informative signal.
+Temporal modeling consistently benefits classification, particularly at the industry and sector levels. The LSTM model provides the most stable improvements, especially for intermediate sequence lengths at the sector level and across all sequence lengths at the industry level. At the company level, shorter sequences are most effective, indicating that recent filing sentiment contains the most informative signal.
 
 In contrast, regression results are considerably weaker. The LSTM model consistently degrades performance across aggregation levels, suggesting that temporal sentiment dynamics are more suitable for directional prediction than for numerical return estimation. The PatchTST architecture partially mitigates this limitation, providing statistically significant improvements for short sequences, particularly at the company and industry levels. This behaviour suggests that transformer-based models may better capture short-term dependencies relevant for return prediction.
 

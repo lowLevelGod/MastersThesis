@@ -657,26 +657,215 @@ def analyze_group_results(group_col, task, models_dict):
             beats = (df_res["test_with_sent"] < df_res["baseline"]).mean()
 
         print("\nBeats baseline percentage:", round(beats*100, 2), "%")
+    
+        all_models_results = []
 
-        # -------------------------------------------------------
-        # 6️⃣ Sample Size vs Improvement Relationship
-        # -------------------------------------------------------
+    # =====================================================
+    # LOAD ALL MODELS FIRST
+    # =====================================================
+    for model_name in models_dict.keys():
 
-        avg_samples = (
-            df_res.groupby(group_col)["samples"]
-            .mean()
-        )
+        csv_path = f"group_results_{group_col}_{task}_{model_name}.csv"
+        if not os.path.exists(csv_path):
+            continue
 
-        merged = pd.DataFrame({
-            "avg_delta": avg_per_group,
-            "avg_samples": avg_samples
-        }).dropna()
+        df_res = pd.read_csv(csv_path)
+        df_res["model"] = model_name
 
-        corr = merged["avg_delta"].corr(merged["avg_samples"])
+        all_models_results.append(df_res)
 
-        print("Correlation between sample size and Δ:", round(corr, 4))
+    if not all_models_results:
+        print("No results found.")
+        return
 
-        print("\nAnalysis completed for:", model_name)
+    df_all = pd.concat(all_models_results)
+
+    print("\n" + "="*80)
+    print(f"{group_col.upper()} | {task.upper()} | GLOBAL ANALYSIS")
+    print("="*80)
+
+    # =====================================================
+    # 1️⃣ Average per group (across horizons)
+    # =====================================================
+
+    grouped = (
+        df_all
+        .groupby(["model", group_col])
+        .agg({
+            "delta": "mean",
+            "test_no_sent": "mean"
+        })
+        .reset_index()
+    )
+
+    # percent improvement vs test_no_sent
+    grouped["percent_improvement"] = (
+        grouped["delta"] / grouped["test_no_sent"].replace(0, np.nan)
+    ) * 100
+
+    # =====================================================
+    # 2️⃣ BEST IMPROVEMENT
+    # =====================================================
+
+    if task == "classification":
+        best_row = grouped.loc[grouped["delta"].idxmax()]
+        worst_row = grouped.loc[grouped["delta"].idxmin()]
+    else:
+        # regression -> lower RMSE better
+        best_row = grouped.loc[grouped["delta"].idxmin()]
+        worst_row = grouped.loc[grouped["delta"].idxmax()]
+
+    # =====================================================
+    # 3️⃣ Statistical significance (overall)
+    # =====================================================
+
+    avg_per_group = (
+        df_all.groupby(group_col)["delta"]
+        .mean()
+        .dropna()
+    )
+
+    deltas = avg_per_group.values
+
+    if len(deltas) >= 5:
+        t_stat, p_val = ttest_1samp(deltas, 0)
+    else:
+        p_val = np.nan
+
+    significant = (p_val < 0.05) if not np.isnan(p_val) else False
+
+    # =====================================================
+    # 4️⃣ Overall improvement
+    # =====================================================
+
+    overall_delta = grouped["delta"].mean()
+    overall_percent = grouped["percent_improvement"].mean()
+
+    if task == "classification":
+        result_type = "IMPROVEMENT" if overall_delta > 0 else "DEGRADATION"
+    else:
+        result_type = "IMPROVEMENT" if overall_delta < 0 else "DEGRADATION"
+
+    # =====================================================
+    # PRINT RESULTS
+    # =====================================================
+
+    print("\n" + "-"*60)
+    print("BEST IMPROVEMENT")
+    print("-"*60)
+
+    print("Group:", group_col)
+    print("Entity:", best_row[group_col])
+    print("Model:", best_row["model"])
+    print("Mean Δ:", round(best_row["delta"], 6))
+    print("Percent improvement:", round(best_row["percent_improvement"], 2), "%")
+
+    if task == "classification":
+        res = "IMPROVEMENT" if best_row["delta"] > 0 else "DEGRADATION"
+    else:
+        res = "IMPROVEMENT" if best_row["delta"] < 0 else "DEGRADATION"
+
+    print("Result type:", res)
+
+    print("\n" + "-"*60)
+    print("BIGGEST DEGRADATION")
+    print("-"*60)
+
+    print("Group:", group_col)
+    print("Entity:", worst_row[group_col])
+    print("Model:", worst_row["model"])
+    print("Mean Δ:", round(worst_row["delta"], 6))
+    print("Percent change:", round(worst_row["percent_improvement"], 2), "%")
+
+    if task == "classification":
+        res = "IMPROVEMENT" if worst_row["delta"] > 0 else "DEGRADATION"
+    else:
+        res = "IMPROVEMENT" if worst_row["delta"] < 0 else "DEGRADATION"
+
+    print("Result type:", res)
+    
+    # =====================================================
+    # 4️⃣ BEST OVERALL MODEL EFFECT
+    # =====================================================
+
+    model_avg = (
+        df_all
+        .groupby(["model", group_col])
+        .agg({
+            "delta": "mean",
+            "test_no_sent": "mean"
+        })
+        .reset_index()
+    )
+
+    # average across groups per model
+    model_summary = (
+        model_avg
+        .groupby("model")
+        .agg({
+            "delta": "mean",
+            "test_no_sent": "mean"
+        })
+        .reset_index()
+    )
+
+    model_summary["percent_improvement"] = (
+        model_summary["delta"] /
+        model_summary["test_no_sent"].replace(0, np.nan)
+    ) * 100
+
+
+    # pick best model depending on task
+    if task == "classification":
+        best_model_row = model_summary.loc[model_summary["delta"].idxmax()]
+    else:
+        best_model_row = model_summary.loc[model_summary["delta"].idxmin()]
+
+
+    best_model_name = best_model_row["model"]
+    overall_delta = best_model_row["delta"]
+    overall_percent = best_model_row["percent_improvement"]
+
+
+    # statistical test using ONLY best model
+    best_model_df = df_all[df_all["model"] == best_model_name]
+
+    avg_per_group = (
+        best_model_df.groupby(group_col)["delta"]
+        .mean()
+        .dropna()
+    )
+
+    deltas = avg_per_group.values
+
+    if len(deltas) >= 5:
+        t_stat, p_val = ttest_1samp(deltas, 0)
+    else:
+        p_val = np.nan
+
+    significant = (p_val < 0.05) if not np.isnan(p_val) else False
+
+
+    # improvement vs degradation
+    if task == "classification":
+        result_type = "IMPROVEMENT" if overall_delta > 0 else "DEGRADATION"
+    else:
+        result_type = "IMPROVEMENT" if overall_delta < 0 else "DEGRADATION"
+        
+    print("\n" + "-"*60)
+    print("BEST OVERALL MODEL EFFECT")
+    print("-"*60)
+
+    print("Grouping:", group_col)
+    print("Task:", task)
+    print("Best model:", best_model_name)
+    print("Mean overall Δ:", round(overall_delta, 6))
+    print("Percent improvement:", round(overall_percent, 2), "%")
+    print("Statistically significant:", significant)
+    print("p-value:", p_val)
+    print("Result type:", result_type)
+
+        
      
 # -------------------------
 # SECTOR TRAINING
