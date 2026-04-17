@@ -178,7 +178,8 @@ For the regression task, the baseline model predicts the mean return observed in
 
 \section{Data Splitting Strategy}
 
-In order to avoid information leakage and ensure that the experimental setup reflects a realistic forecasting scenario, the dataset is split according to time-series constraints. All observations are first sorted chronologically based on the filing date of the corresponding SEC report. The dataset is then divided into training, validation, and test sets such that observations in the training set occur strictly before those in the validation set, and validation observations occur before those in the test set.
+In order to avoid information leakage and ensure that the experimental setup reflects a realistic forecasting scenario, the dataset is split according to time-series constraints. All observations are first sorted chronologically based on the filing date of the corresponding SEC report. 
+The dataset is then divided into training, validation, and test sets such that observations in the training set occur strictly before those in the validation set, and validation observations occur before those in the test set. 80\% of the data is allocated to the training and validation sets, while the remaining 20\% is reserved for testing.
 
 This chronological ordering ensures that models are always trained using information available in the past and evaluated on future data, which is consistent with real-world financial prediction settings.
 
