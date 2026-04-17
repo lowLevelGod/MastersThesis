@@ -53,8 +53,8 @@ class FinBertSentimentEnhancer:
         print("Using device:", self.device)
 
         print("Loading FinBERT self.model...")
-        self.tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
-        self.model = BertForSequenceClassification.from_pretrained(MODEL_NAME,num_labels=3)
+        self.tokenizer = BertTokenizer.from_pretrained(FinBertSentimentEnhancer.MODEL_NAME)
+        self.model = BertForSequenceClassification.from_pretrained(FinBertSentimentEnhancer.MODEL_NAME,num_labels=3)
         
         self.model.to(self.device)
         
