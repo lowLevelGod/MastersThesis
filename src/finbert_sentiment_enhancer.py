@@ -53,8 +53,8 @@ class FinBertSentimentEnhancer:
         print("Using device:", self.device)
 
         print("Loading FinBERT self.model...")
-        self.tokenizer = BertTokenizer.from_pretrained('yiyanghkust/finbert-tone')
-        self.model = BertForSequenceClassification.from_pretrained('yiyanghkust/finbert-tone',num_labels=3)
+        self.tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
+        self.model = BertForSequenceClassification.from_pretrained(MODEL_NAME,num_labels=3)
         
         self.model.to(self.device)
         
@@ -408,23 +408,22 @@ class FinBertSentimentEnhancer:
 
         return shard_indices
 
-
 if __name__ == "__main__":
     
     shard_id = 0
     num_shards = 2
-    
+
     enhancer = FinBertSentimentEnhancer(
         chunk_size=384,
         stride=64,
         max_chunks=48,
         batch_size=512,         # GPU batch size
         doc_batch_size=512,     # docs per outer batch
-        save_every=100000,
-        cache_dir="/kaggle/input/sec-filings-with-stock-price-features",
+        save_every=5000,
+        cache_dir="finbert_cache",
         use_chunk_cache=False,  # Kaggle: better False (disk I/O is slow)
-        shard_id=0,
-        num_shards=2
+        shard_id=shard_id,
+        num_shards=num_shards
     )
 
     enhancer.add_sentiment_scores(
