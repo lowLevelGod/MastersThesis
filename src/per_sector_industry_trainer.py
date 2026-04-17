@@ -865,8 +865,87 @@ def analyze_group_results(group_col, task, models_dict):
     print("p-value:", p_val)
     print("Result type:", result_type)
 
+def plot_sentiment_gain_all_groupings(models_dict):
+
+    set_publication_style()
+
+    tasks = ["classification", "regression"]
+    groupings = ["ticker", "sector", "industry"]
+
+    for task in tasks:
+        for model_name in models_dict.keys():
+
+            all_results = []
+
+            # -------------------------------------------------------
+            # Load all group levels
+            # -------------------------------------------------------
+            for group_col in groupings:
+
+                csv_path = f"group_results_{group_col}_{task}_{model_name}.csv"
+
+                if not os.path.exists(csv_path):
+                    continue
+
+                df = pd.read_csv(csv_path)
+                df["grouping"] = group_col
+                all_results.append(df)
+
+            if not all_results:
+                continue
+
+            df_all = pd.concat(all_results)
+
+            # -------------------------------------------------------
+            # Compute average delta per horizon per grouping
+            # -------------------------------------------------------
+            df_plot = (
+                df_all
+                .groupby(["grouping", "horizon_days"])["delta"]
+                .mean()
+                .reset_index()
+            )
+
+            # Rename for nicer legend
+            name_map = {
+                "ticker": "Company-level",
+                "sector": "Sector-level",
+                "industry": "Industry-level"
+            }
+
+            df_plot["grouping"] = df_plot["grouping"].map(name_map)
+
+            # -------------------------------------------------------
+            # Plot
+            # -------------------------------------------------------
+            plt.figure(figsize=(8,5))
+
+            sns.lineplot(
+                data=df_plot,
+                x="horizon_days",
+                y="delta",
+                hue="grouping",
+                hue_order=["Company-level", "Sector-level", "Industry-level"],
+                marker="o"
+            )
+
+            plt.axhline(0, linestyle="--")
+            plt.xlabel("Prediction Horizon (Days)")
+            plt.ylabel("Mean Sentiment Gain (Δ)")
+
+            plt.title(
+                f"{task.capitalize()} — Sentiment Gain per Horizon\n{model_name}"
+            )
+
+            plt.legend(title="Grouping")
+            plt.tight_layout()
+
+            plt.savefig(
+                f"comparison_{task}_{model_name}_group_levels.pdf"
+            )
+
+            plt.close()
         
-     
 # -------------------------
 # SECTOR TRAINING
 # -------------------------
@@ -930,11 +1009,14 @@ def analyze_group_results(group_col, task, models_dict):
 #     results_prefix="group_results"
 # )
         
-analyze_group_results("sector", "classification", classification_models)
-analyze_group_results("sector", "regression", regression_models)
+# analyze_group_results("sector", "classification", classification_models)
+# analyze_group_results("sector", "regression", regression_models)
 
-analyze_group_results("industry", "classification", classification_models)
-analyze_group_results("industry", "regression", regression_models)
+# analyze_group_results("industry", "classification", classification_models)
+# analyze_group_results("industry", "regression", regression_models)
 
-analyze_group_results("ticker", "classification", classification_models)
-analyze_group_results("ticker", "regression", regression_models)
+# analyze_group_results("ticker", "classification", classification_models)
+# analyze_group_results("ticker", "regression", regression_models)
+
+plot_sentiment_gain_all_groupings(classification_models)
+plot_sentiment_gain_all_groupings(regression_models)

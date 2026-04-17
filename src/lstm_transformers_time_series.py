@@ -814,6 +814,131 @@ def analyze_best(group_col):
 
         print("Result type:", result_type)
 
+def plot_best_temporal_groupings():
+
+    set_publication_style()
+
+    tasks = ["classification", "regression"]
+    models = ["LSTM", "PatchTST"]
+    groupings = ["ticker", "sector", "industry"]
+    seq_lens = [5, 10, 15, 20]
+
+    for task in tasks:
+        for model_name in models:
+
+            plot_rows = []
+
+            for group_col in groupings:
+
+                all_seq = []
+
+                # ---------------------------------------------
+                # Load all sequence lengths
+                # ---------------------------------------------
+                for seq_len in seq_lens:
+
+                    csv_path = f"results_{group_col}_{task}_{model_name}_seq{seq_len}.csv"
+
+                    if not os.path.exists(csv_path):
+                        continue
+
+                    df = pd.read_csv(csv_path)
+                    df["seq_len"] = seq_len
+
+                    all_seq.append(df)
+
+                if not all_seq:
+                    continue
+
+                df_all = pd.concat(all_seq, ignore_index=True)
+
+                # ---------------------------------------------
+                # choose BEST seq per horizon
+                # ---------------------------------------------
+                for h in sorted(df_all["horizon_days"].unique()):
+
+                    horizon_subset = df_all[df_all["horizon_days"] == h]
+
+                    best_mean = None
+                    best_seq = None
+
+                    for seq_len in horizon_subset["seq_len"].unique():
+
+                        seq_subset = horizon_subset[
+                            horizon_subset["seq_len"] == seq_len
+                        ]
+
+                        deltas = seq_subset["delta"].dropna()
+
+                        if len(deltas) < 5:
+                            continue
+
+                        mean_delta = deltas.mean()
+
+                        if task == "classification":
+                            better = best_mean is None or mean_delta > best_mean
+                        else:
+                            better = best_mean is None or mean_delta < best_mean
+
+                        if better:
+                            best_mean = mean_delta
+                            best_seq = seq_len
+
+                    if best_mean is None:
+                        continue
+
+                    plot_rows.append({
+                        "grouping": group_col,
+                        "horizon_days": h,
+                        "delta": best_mean,
+                        "seq_len": best_seq
+                    })
+
+            if not plot_rows:
+                continue
+
+            df_plot = pd.DataFrame(plot_rows)
+
+            # nicer names
+            name_map = {
+                "ticker": "Company-level",
+                "sector": "Sector-level",
+                "industry": "Industry-level"
+            }
+
+            df_plot["grouping"] = df_plot["grouping"].map(name_map)
+
+            # ---------------------------------------------
+            # plot
+            # ---------------------------------------------
+            plt.figure(figsize=(8,5))
+
+            sns.lineplot(
+                data=df_plot,
+                x="horizon_days",
+                y="delta",
+                hue="grouping",
+                marker="o"
+            )
+
+            plt.axhline(0, linestyle="--")
+
+            plt.xlabel("Prediction Horizon (Days)")
+            plt.ylabel("Mean Sentiment Gain (Δ)")
+
+            plt.title(
+                f"{task.capitalize()} — Sentiment Gain per Horizon\n{model_name}"
+            )
+
+            plt.legend(title="Grouping")
+            plt.tight_layout()
+
+            plt.savefig(
+                f"best_temporal_{task}_{model_name}_group_levels.pdf"
+            )
+
+            plt.close()
+
 # Run experiments
 # ticker level
 # run_experiment(df, "ticker", task="classification")
@@ -831,6 +956,8 @@ def analyze_best(group_col):
 # analyze_all_lstm_experiments("sector")
 # analyze_all_lstm_experiments("industry")
 
-analyze_best("ticker")
-analyze_best("sector")
-analyze_best("industry")
+# analyze_best("ticker")
+# analyze_best("sector")
+# analyze_best("industry")
+
+plot_best_temporal_groupings()

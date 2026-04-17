@@ -160,11 +160,179 @@ polarity variability suggests documents where sentiment fluctuates more strongly
 potentially reflecting the coexistence of positive and negative discussions, such as descriptions 
 of risks alongside favorable performance indicators.
 
-\begin{figure}[htbp]
+\begin{figure}
 \centering
 \includegraphics[width=0.9\textwidth]{sec_filings_images/sentiment_scores_distributions.pdf}
 \caption{Distribution of the sentiment features extracted from financial filings using the FinBERT model.}
 \label{fig:sentiment_distribution}
+\end{figure}
+
+\subsection{Sentiment-Gain Delta Distribution}
+
+\begin{figure}
+\centering
+
+% ----- Classification Row -----
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/sector_classification_delta_distribution_Logistic.pdf}
+    \caption{Logistic}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/sector_classification_delta_distribution_RandomForest.pdf}
+    \caption{Random Forest}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/sector_classification_delta_distribution_XGBoost.pdf}
+    \caption{XGBoost}
+\end{subfigure}
+
+\vspace{0.35cm}
+
+\textit{Classification}
+
+\vspace{0.35cm}
+
+% ----- Regression Row -----
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/sector_regression_delta_distribution_Ridge.pdf}
+    \caption{Ridge}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/sector_regression_delta_distribution_RandomForest.pdf}
+    \caption{Random Forest}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/sector_regression_delta_distribution_XGBoost.pdf}
+    \caption{XGBoost}
+\end{subfigure}
+
+\vspace{0.35cm}
+
+\textit{Regression}
+
+\caption{Distribution of performance differences $\Delta$ between models trained with and without sentiment features for the sector-level experiments. Each histogram aggregates $\Delta$ values across all sectors and prediction horizons (1--7 days). The data is mostly concentrated around zero for regression, indicating negligible impact of sentiment features, while classification exhibits a wider spread with noticeable improvements for Logistic regression.}
+\label{fig:sector_delta_distribution}
+\end{figure}
+
+
+\begin{figure}
+\centering
+
+% ----- Classification Row -----
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/industry_classification_delta_distribution_Logistic.pdf}
+    \caption{Logistic}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/industry_classification_delta_distribution_RandomForest.pdf}
+    \caption{Random Forest}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/industry_classification_delta_distribution_XGBoost.pdf}
+    \caption{XGBoost}
+\end{subfigure}
+
+\vspace{0.35cm}
+
+\textit{Classification}
+
+\vspace{0.35cm}
+
+% ----- Regression Row -----
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/industry_regression_delta_distribution_Ridge.pdf}
+    \caption{Ridge}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/industry_regression_delta_distribution_RandomForest.pdf}
+    \caption{Random Forest}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/industry_regression_delta_distribution_XGBoost.pdf}
+    \caption{XGBoost}
+\end{subfigure}
+
+\vspace{0.35cm}
+
+\textit{Regression}
+
+\caption{Distribution of performance differences $\Delta$ between models trained with and without sentiment features for the industry-level experiments. Each histogram aggregates $\Delta$ values across all industries and prediction horizons (1--7 days). The data is mostly concentrated around zero for regression, indicating negligible impact of sentiment features, while classification exhibits a wider spread with noticeable improvements for Logistic regression.}
+\label{fig:industry_delta_distribution}
+\end{figure}
+
+\begin{figure}
+\centering
+
+% ----- Classification Row -----
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/ticker_classification_delta_distribution_Logistic.pdf}
+    \caption{Logistic}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/ticker_classification_delta_distribution_RandomForest.pdf}
+    \caption{Random Forest}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/ticker_classification_delta_distribution_XGBoost.pdf}
+    \caption{XGBoost}
+\end{subfigure}
+
+\vspace{0.35cm}
+
+\textit{Classification}
+
+\vspace{0.35cm}
+
+% ----- Regression Row -----
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/ticker_regression_delta_distribution_Ridge.pdf}
+    \caption{Ridge}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/ticker_regression_delta_distribution_RandomForest.pdf}
+    \caption{Random Forest}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{sector_grouping_comparison_images/ticker_regression_delta_distribution_XGBoost.pdf}
+    \caption{XGBoost}
+\end{subfigure}
+
+\vspace{0.35cm}
+
+\textit{Regression}
+
+\caption{Distribution of performance differences $\Delta$ between models trained with and without sentiment features for the company-level experiments. Each histogram aggregates $\Delta$ values across all companies and prediction horizons (1--7 days). The data exhibits a high degree of variability, due to the limiter number of samples available for each company.}
+\label{fig:company_delta_distribution}
 \end{figure}
 
 \section{Sector and Industry Distribution}
