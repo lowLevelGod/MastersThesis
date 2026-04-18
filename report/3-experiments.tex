@@ -447,7 +447,7 @@ For logistic regression, the average improvement across companies is negative ($
 
 These findings highlight the limitations of company-level modeling under data constraints. While firm-specific models may capture idiosyncratic patterns, the limited number of filings per company reduces statistical reliability and increases the risk of overfitting (see Figure \ref{fig:company_delta_distribution} for delta distribution).
 
-\begin{table}
+\begin{table}[t]
 \centering
 \caption{Best overall model performance across grouping levels. Positive values indicate improvements for classification ($F_1$ Score), while negative values indicate improvements for regression (RMSE).}
 \label{tab:overall_group_results}
@@ -466,7 +466,7 @@ Regression & Company  & RandomForest & -0.59\% & No \\
 \end{tabular}
 \end{table}
 
-\begin{table}
+\begin{table}[t]
 \centering
 \caption{Largest individual entity improvements across grouping levels. Positive values indicate improvements for classification ($F_1$ Score), while negative values indicate improvements for regression (RMSE).}
 \label{tab:best_entity_results}
@@ -482,7 +482,7 @@ Regression & Sector   & Miscellaneous  & RandomForest & -0.64\% \\
 Regression & Industry & Semiconductors & Ridge        & -5.35\% \\
 Regression & Company  & EQS            & RandomForest & -8.99\% \\
 \hline
-\end{tabular}
+\end{tabular}[t]
 \end{table}
 
 \begin{table}
@@ -631,7 +631,7 @@ The PatchTST model performs better for short sequences. With sequence length fiv
 
 Overall, ticker-level experiments indicate that short temporal contexts are most informative. LSTM performs best for classification with short sequences, while PatchTST provides the strongest regression improvements, also for short sequences. Longer temporal windows reduce statistical significance and introduce variability across companies.
 
-\begin{table}
+\begin{table}[t]
 \centering
 \caption{Best overall model performance for each grouping and task. Positive values indicate improvements for classification ($F_1$ Score), while negative values indicate improvements for regression (RMSE).}
 \label{tab:lstm_patchtst_overall}
@@ -650,7 +650,7 @@ Regression & Industry & PatchTST (5)  & -2.39\%  & Yes \\
 \end{tabular}
 \end{table}
 
-\begin{table}
+\begin{table}[t]
 \centering
 \caption{Largest individual entity improvements. Positive values indicate improvements for classification ($F_1$ Score), while negative values indicate improvements for regression (RMSE).}
 \label{tab:lstm_patchtst_best_entities}
@@ -669,7 +669,7 @@ Regression & Industry & Shoe Manufacturing   & PatchTST (20) & -46.20\% \\
 \end{tabular}
 \end{table}
 
-\begin{table}
+\begin{table}[t]
 \centering
 \caption{Largest individual degradations. Negative values indicate worse performance for classification ($F_1$ Score), while positive values indicate worse performance for regression (RMSE).}
 \label{tab:lstm_patchtst_worst_entities}

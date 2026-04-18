@@ -66,8 +66,6 @@ Because the latter primarily reflects current ticker assignments and may not acc
 
 After mapping CIK identifiers to stock tickers, each ticker is treated as a distinct firm in the dataset. This transformation allows us to move from a filing-level perspective to a firm-level panel structure analysis.
 
-\subsection*{Overall Firm Coverage}
-
 The final dataset contains 119,613 filings corresponding to 3,671 unique companies (see Appendix \ref{appendix:filings_per_company}). On average, each firm contributes 32.58 filings. This indicates that the dataset has both substantial cross-sectional breadth and meaningful longitudinal depth.
 
 The relatively large number of firms ensures that the dataset captures heterogeneous disclosure behavior across industries and firm sizes. At the same time, the average of roughly 33 filings per firm suggests that many firms are observed repeatedly over time, making the dataset suitable for panel-based empirical analysis and machine learning models that benefit from repeated firm observations.
@@ -236,8 +234,6 @@ Accordingly, the reference price $p_i$ is defined conditional on the filing time
     \item If the filing is published \textit{after trading hours}, the return is computed between the same day's closing price and the next trading day's opening price.
 \end{itemize}
 
-This alignment ensures that the computed return reflects the first tradable price adjustment following public disclosure. Consequently, the constructed labels better approximate the immediate information-driven component of price movement rather than unrelated market fluctuations.
-
 \subsubsection*{Sector and Industry Adjusted Returns}
 
 Beyond raw returns, additional sets of labels are constructed using sector and industry adjusted returns. The motivation for this adjustment is that stock price movements are often influenced not only by firm-specific information but also by broader sectoral or industry-wide trends. For instance, macroeconomic news affecting interest rates may systematically move financial stocks, while commodity price shocks may affect energy firms collectively. In such cases, part of the observed return may reflect common factors rather than firm-specific information contained in the filing.
@@ -253,5 +249,3 @@ To isolate the idiosyncratic component of the reaction, we compute adjusted retu
 where a leave-one-out approach is employed to avoid mechanical bias by excluding the firm's own return from the group average. This ensures that the benchmark represents the common movement of peer firms only.
 
 The sector and industry adjusted labels allow for a more nuanced investigation of predictive performance. If a model performs well using raw returns but poorly using adjusted returns, this may indicate that it primarily captures sector-wide trends rather than firm-specific informational effects. Conversely, strong performance on adjusted labels would suggest that the model extracts idiosyncratic signals from financial disclosures that go beyond common industry movements.
-
-By constructing both raw and adjusted labels across multiple horizons and prediction tasks, the dataset enables a comprehensive evaluation of short-term stock price reactions to financial reports under different definitions of market response.
