@@ -735,5 +735,77 @@ def analyze_full_results(task, models_dict):
         print(f"Result type: {direction}")
         print(f"p-value: {best['p_value']:.6f}")
         
-analyze_full_results("classification", classification_models)
-analyze_full_results("regression", regression_models)
+# analyze_full_results("classification", classification_models)
+# analyze_full_results("regression", regression_models)
+
+def compare_finbert_roberta(models_dict):
+
+    set_publication_style()
+
+    tasks = ["classification", "regression"]
+
+    for task in tasks:
+        for model_name in models_dict.keys():
+
+            finbert_path = f"full_results_{task}_raw_{model_name}.csv"
+            roberta_path = f"roberta_full_results_{task}_raw_{model_name}.csv"
+
+            if not os.path.exists(finbert_path) or not os.path.exists(roberta_path):
+                continue
+
+            df_finbert = pd.read_csv(finbert_path)
+            df_roberta = pd.read_csv(roberta_path)
+
+            # add model source label
+            df_finbert["sentiment_model"] = "FinBERT"
+            df_roberta["sentiment_model"] = "RoBERTa"
+
+            # combine
+            df_all = pd.concat([df_finbert, df_roberta], ignore_index=True)
+
+            # -----------------------------------------------------
+            # Compute mean delta per horizon
+            # -----------------------------------------------------
+
+            df_plot = (
+                df_all
+                .groupby(["sentiment_model", "horizon_days"])["delta"]
+                .mean()
+                .reset_index()
+            )
+
+            # -----------------------------------------------------
+            # Plot
+            # -----------------------------------------------------
+
+            plt.figure(figsize=(8,5))
+
+            sns.lineplot(
+                data=df_plot,
+                x="horizon_days",
+                y="delta",
+                hue="sentiment_model",
+                marker="o"
+            )
+
+            plt.axhline(0, linestyle="--")
+
+            plt.xlabel("Prediction Horizon (Days)")
+            plt.ylabel("Mean Sentiment Gain (Δ)")
+
+            plt.title(
+                f"{task.capitalize()} — FinBERT vs RoBERTa\n{model_name}"
+            )
+
+            plt.legend(title="Sentiment Model")
+
+            plt.tight_layout()
+
+            plt.savefig(
+                f"finbert_vs_roberta_{task}_{model_name}.pdf"
+            )
+
+            plt.close()
+            
+compare_finbert_roberta(classification_models)
+compare_finbert_roberta(regression_models)

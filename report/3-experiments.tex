@@ -6,17 +6,11 @@ The main objective of the experiments conducted in this work is to analyse the i
 
 The prediction horizon considered in this work is the short term, ranging from one to seven trading days following the publication of a financial report. This interval was selected because financial disclosures are expected to influence market reactions shortly after becoming publicly available.
 
-The experiments therefore compare two categories of models:
-
-\begin{itemize}
-\item models trained exclusively on stock market indicators derived from historical price and volume data (such as moving averages, momentum indicators and trading volume);
-\item models trained on the same stock market indicators augmented with sentiment features extracted from financial reports.
-\end{itemize}
-
+The experiments therefore compare two categories of models: models trained exclusively on stock market indicators derived from historical price and volume data (such as moving averages, momentum indicators and trading volume)
+and models trained on the same stock market indicators augmented with sentiment features extracted from financial reports.
 The primary interest of this analysis is not to obtain the most accurate predictive model for stock price forecasting. Instead, the goal is to measure the relative performance improvement introduced by sentiment information. In other words, the experiments focus on observing the performance difference between models trained without sentiment features and models trained with sentiment features.
 
 This comparison is performed across two prediction tasks, classification and regression, across multiple machine learning models and across prediction horizons ranging from one to seven days.
-
 The resulting performance differences allow us to quantify whether textual sentiment extracted from financial reports provides additional predictive power beyond traditional market indicators.
 
 \section{Evaluation Metrics}
@@ -63,7 +57,6 @@ The macro-average ensures that each class contributes equally to the final score
 \subsection{Regression Metric}
 
 For the regression task, the goal is to predict the numerical return of the stock price after a given time horizon.
-
 To evaluate regression performance, the Root Mean Squared Error (RMSE) is used. RMSE measures the square root of the average squared difference between predicted values and actual values.
 
 Formally, RMSE is defined as:
@@ -72,12 +65,8 @@ Formally, RMSE is defined as:
 RMSE = \sqrt{\frac{1}{N} \sum_{i=1}^{N} (y_i - \hat{y}_i)^2}
 \end{equation}
 
-where:
-\begin{itemize}
-\item $y_i$ represents the true value,
-\item $\hat{y}_i$ represents the predicted value,
-\item $N$ is the total number of observations.
-\end{itemize}
+where $y_i$ represents the true value, $\hat{y}_i$ represents the predicted value and 
+$N$ is the total number of observations.
 
 RMSE is particularly suitable for financial prediction tasks because it penalizes large prediction errors more heavily than small ones. This property is desirable when predicting stock returns, as large errors may correspond to significant misestimations of market movement.
 
@@ -95,7 +84,6 @@ Consequently, sentiment was treated as a central textual feature.
 \subsection*{BERT and FinBERT}
 
 To extract sentiment from the textual disclosures, this study employs FinBERT\cite{yang2020finbert}, a domain-adapted transformer-based language model derived from BERT.
-
 BERT (Bidirectional Encoder Representations from Transformers), introduced by Jacob Devlin et al.\cite{devlin2019bertpretrainingdeepbidirectional}, is based on the transformer architecture proposed by Ashish Vaswani et al.\cite{vaswani2017attention}. 
 Unlike earlier sequential language models, BERT uses bidirectional self-attention mechanisms, allowing it to condition each word on both its left and right context simultaneously. 
 This architecture enables deep contextual understanding of language and has become foundational in modern natural language processing.
@@ -106,9 +94,31 @@ Financial text exhibits domain-specific terminology, formal structure, and nuanc
 To address this limitation, FinBERT was developed as a version of BERT fine-tuned on financial corpora, including SEC filings and financial news. 
 FinBERT is specifically optimized for financial sentiment classification, distinguishing between positive, negative, and neutral tone in financial contexts. 
 Its training on SEC filings makes it particularly well-suited for analyzing MD\&A and related disclosure sections, as it captures the semantics and tone patterns characteristic of regulatory financial reporting.
-
 Importantly, only the textual narrative sections extracted from the filings were used as input to FinBERT. 
 Residual numerical fragments, table artifacts, and non-linguistic content were removed during preprocessing, ensuring that sentiment scores reflect meaningful narrative disclosures rather than structural noise.
+
+We also experimented with another BERT-based model, RoBERTa\cite{roberta}, which is a robustly optimized version of BERT. This specific model was trained on a large corpus of Twitter data, which is highly different from the financial text in our dataset,
+for textual sentiment analysis\cite{roberta-twitter}. However, initial experiments showed that the mean sentiment gain obtained per horizon is lower for most horizons than the one obtained with FinBERT sentiment features, proving that 
+domain-specific language models are more effective for feature extraction.
+
+\begin{figure}
+\centering
+
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\linewidth]{finbert/finbert_vs_roberta_classification_Logistic.pdf}
+\caption{Logistic Regression (Classification)}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\linewidth]{finbert/finbert_vs_roberta_regression_Ridge.pdf}
+\caption{Ridge Regression (Regression)}
+\end{subfigure}
+
+\caption{Comparison between FinBERT and RoBERTa sentiment features across prediction horizons. The figures depict the mean sentiment gain, defined as the mean performance difference when training the models with and without sentiment features, computed for each of the seven prediction horizons. For classification tasks, positive values indicate improved performance when sentiment information is included, whereas for regression tasks negative values correspond to improved performance due to lower RMSE. Overall, FinBERT (blue line) achieves better sentiment gain across most prediction horizons, suggesting that domain-specific financial sentiment extraction provides more informative signals than general-purpose RoBERTa sentiment scores.}
+\label{fig:finbert_vs_roberta}
+\end{figure}
 
 \subsection*{Handling the 512-Token Limitation}
 
@@ -184,7 +194,6 @@ The dataset is then divided into training, validation, and test sets such that o
 This chronological ordering ensures that models are always trained using information available in the past and evaluated on future data, which is consistent with real-world financial prediction settings.
 
 During model training, cross-validation is performed using an expanding window strategy. In this approach, the training window progressively increases as time advances, while the validation window moves forward accordingly. More formally, at each cross-validation step, the model is trained on all observations available up to a given time point and validated on the immediately following period.
-
 This technique is particularly appropriate for financial time series because it preserves the temporal ordering of observations and allows the model to learn from progressively larger historical datasets while always being evaluated on unseen future data.
 
 \section{Statistical Significance Testing}
@@ -333,7 +342,6 @@ Industry-adjusted & Random Forest & -0.02\% & No \\
 \subsection{Discussion}
 
 Taken together, the results highlight several important patterns regarding the predictive value of sentiment features derived from financial reports.
-
 First, the effect of sentiment features depends strongly on the model class. Linear models such as logistic regression appear to benefit the most from the additional textual information, particularly when industry-adjusted labels are used. In contrast, tree-based ensemble models often experience small decreases in classification performance when sentiment features are added. One possible explanation is that these models already capture complex nonlinear interactions within the structured market features, leaving limited room for additional improvement from textual signals.
 
 Second, the choice of label definition plays a meaningful role in determining whether sentiment information is useful. The strongest improvements for logistic regression occur when industry-adjusted labels are used, suggesting that sentiment extracted from financial reports may capture company-level information that becomes more informative once broader industry movements are removed.
@@ -499,7 +507,6 @@ Regression & Company  & MLR                & Ridge        & 31.36\% \\
 \subsection{Discussion}
 
 Taken together, the results of these experiments provide several important insights.
-
 First, the effectiveness of sentiment features appears to depend strongly on the level of aggregation. Industry-level models show the most consistent improvements for classification tasks, suggesting that sentiment signals may capture industry-specific dynamics in how markets react to financial disclosures.
 
 Second, the impact of sentiment features varies substantially across model classes. Linear models such as logistic regression appear to benefit the most from the inclusion of sentiment features, possibly because these models have limited capacity to extract nonlinear patterns from the structured market data alone. In contrast, tree-based models may already capture complex relationships within the existing feature set, leaving less room for additional improvement.
@@ -662,7 +669,7 @@ Regression & Industry & Shoe Manufacturing   & PatchTST (20) & -46.20\% \\
 \end{tabular}
 \end{table}
 
-\begin{table}[H]
+\begin{table}
 \centering
 \caption{Largest individual degradations. Negative values indicate worse performance for classification ($F_1$ Score), while positive values indicate worse performance for regression (RMSE).}
 \label{tab:lstm_patchtst_worst_entities}
@@ -687,4 +694,5 @@ Temporal modeling consistently benefits classification, particularly at the indu
 
 In contrast, regression results are considerably weaker. The LSTM model consistently degrades performance across aggregation levels, suggesting that temporal sentiment dynamics are more suitable for directional prediction than for numerical return estimation. The PatchTST architecture partially mitigates this limitation, providing statistically significant improvements for short sequences, particularly at the company and industry levels. This behaviour suggests that transformer-based models may better capture short-term dependencies relevant for return prediction.
 
-Overall, the experiments indicate that temporal sentiment information is most useful for classification tasks and that its effectiveness increases with aggregation level. Industry-level modeling provides the most consistent gains, followed by sector-level results, while company-level performance remains more heterogeneous. Furthermore, short to intermediate sequence lengths generally outperform longer contexts, suggesting that sentiment information decays over time. These findings support the conclusion that temporal sentiment modeling can improve directional prediction, while numerical return forecasting remains more challenging and model-dependent.
+Overall, the experiments indicate that temporal sentiment information is most useful for classification tasks and that its effectiveness increases with aggregation level, while return forecasting remains more challenging. 
+Industry-level modeling provides the most consistent gains, followed by sector-level results, while company-level performance remains more heterogeneous. Furthermore, short to intermediate sequence lengths generally outperform longer contexts, suggesting that sentiment information decays over time.
